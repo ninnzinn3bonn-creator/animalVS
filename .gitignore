@@ -1,0 +1,49 @@
+# Dependencies and generated builds
+node_modules/
+**/dist/
+.wrangler/
+**/.wrangler/
+
+# Local environment and deployment credentials
+.env
+.env.*
+!.env.example
+!**/.env.example
+!.env.public.example
+!apps/game/.env.pages
+apps/game/wrangler.jsonc
+apps/capture-proxy-worker/wrangler.jsonc
+
+# Runtime data. This includes source photos, cutouts, masks, manifests, logs,
+# process IDs, and the DPAPI-encrypted Cloudflare Tunnel token.
+runtime/
+work/
+outputs/
+
+# Character snapshots generated for a Pages deployment. They may contain
+# participant likenesses and are deliberately kept out of source control.
+apps/game/public/characters/
+apps/game/public/data/characters.json
+
+# Machine-local project management and diagnostics
+.project-manager.json
+architecture-graph.json
+*.log
+*.out
+*.err
+
+# Photos temporarily placed at the repository root
+/*.jpg
+/*.jpeg
+/*.png
+/*.webp
+
+# Python and editor/OS state
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

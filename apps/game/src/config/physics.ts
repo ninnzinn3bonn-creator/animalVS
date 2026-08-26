@@ -1,0 +1,21 @@
+export const physicsConfig = {
+  gravityY: 0.72,
+  dropInitialVelocityY: 0.35,
+  restitution: 0.005,
+  friction: 1.05,
+  frictionStatic: 1.4,
+  platformFriction: 1.8,
+  platformFrictionStatic: 0.9,
+  frictionAir: 0.018,
+  density: 0.0009,
+  rotationStep: Math.PI / 12,
+  moveStep: 20,
+  settleSpeedThreshold: 0.15,
+  settleAngularThreshold: 0.035,
+  settleTimeoutMs: 2200,
+  loseContactMs: 240,
+  matchDurationMs: 60_000,
+  spawnY: 124,
+  characterBaseHeight: 79,
+  maxCharacterWidthRatio: 0.42
+} as const;

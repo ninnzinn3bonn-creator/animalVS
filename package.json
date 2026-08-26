@@ -1,0 +1,53 @@
+{
+  "name": "human-stack-battle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n server,game,worker -c cyan,green,magenta \"npm:dev:server\" \"npm:dev:game\" \"npm:dev:worker\"",
+    "dev:game": "vite --config apps/game/vite.config.ts",
+    "dev:server": "tsx watch apps/server/src/index.ts",
+    "dev:worker": "python -m uvicorn app:app --app-dir services/image-worker --host 127.0.0.1 --port 8788",
+    "capture:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/capture-start.ps1",
+    "capture:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/capture-stop.ps1",
+    "capture:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/capture-status.ps1",
+    "sync:static": "node scripts/sync-static-characters.mjs",
+    "public": "npm run build && concurrently -k -n server,worker -c cyan,magenta \"npm:public:server\" \"npm:dev:worker\"",
+    "public:server": "node --env-file=.env.public apps/server/dist/index.js",
+    "setup:python": "python -m pip install -r services/image-worker/requirements.txt",
+    "test": "vitest run",
+    "test:e2e": "vitest run tests/e2e.spec.ts",
+    "typecheck": "tsc -p apps/server/tsconfig.json && tsc -p apps/game/tsconfig.json && tsc -p apps/capture-proxy-worker/tsconfig.json",
+    "build": "npm run sync:static && npm run typecheck && vite build --config apps/game/vite.config.ts",
+    "build:pages": "npm run sync:static && npm run typecheck && vite build --config apps/game/vite.config.ts --mode pages",
+    "deploy:capture-proxy": "wrangler deploy --config apps/capture-proxy-worker/wrangler.jsonc",
+    "deploy:pages": "npm run build:pages && wrangler --cwd apps/game pages deploy dist --project-name human-stack-battle-game --branch main",
+    "start": "node apps/server/dist/index.js"
+  },
+  "dependencies": {
+    "@fastify/busboy": "^3.1.1",
+    "chokidar": "^4.0.3",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "lucide": "^0.468.0",
+    "matter-js": "^0.20.0",
+    "multer": "^2.0.2",
+    "sharp": "^0.34.3",
+    "ws": "^8.18.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/matter-js": "^0.19.8",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.0.14",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.5",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.111.0"
+  }
+}

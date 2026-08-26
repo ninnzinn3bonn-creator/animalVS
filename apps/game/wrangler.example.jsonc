@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "YOUR_PAGES_PROJECT",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2026-07-22",
+  "services": [
+    {
+      "binding": "CAPTURE_PROXY",
+      "service": "YOUR_CAPTURE_PROXY_WORKER"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "YOUR_LEADERBOARD_DATABASE",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "appTitle": "ともだちたわーばとる",
+  "startSuccess": "キャラ作成機能を起動しました。\n公開ゲームの撮影画面を開きます。",
+  "startFailure": "キャラ作成機能を起動できませんでした。",
+  "publicHealthFailure": "公開ゲームから画像処理APIへ接続できませんでした。",
+  "localHealthFailure": "ローカル画像処理サービスの正常応答を確認できませんでした。",
+  "stopSuccess": "キャラ作成機能を安全に停止しました。\nゲーム本体は引き続き利用できます。",
+  "stopFailure": "キャラ作成機能を完全に停止できませんでした。",
+  "stopIncomplete": "一部の画像処理サービスが停止していません。",
+  "statusTitle": "キャラ作成機能の状態",
+  "statusPublicAvailable": "公開キャラ作成経路: 利用可能",
+  "statusPublicStopped": "公開キャラ作成経路: 停止中",
+  "statusFailure": "状態を確認できませんでした。",
+  "logLabel": "ログ"
+}

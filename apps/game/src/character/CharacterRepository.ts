@@ -22,7 +22,10 @@ export class CharacterRepository {
     const remoteCharacters = await this.loadRemote();
     if (remoteCharacters) {
       this.remoteAvailable = true;
-      this.characters = this.applyLocalDeletions(this.normalize(remoteCharacters, true));
+      const staticCharacters = await this.loadStatic();
+      this.characters = this.applyLocalDeletions(
+        mergeById(this.normalize(staticCharacters, false), this.normalize(remoteCharacters, true))
+      );
       return this.characters;
     }
 
@@ -214,6 +217,12 @@ export class CharacterRepository {
       // Local preferences are optional; private browsing may reject storage.
     }
   }
+}
+
+function mergeById(primary: CharacterDefinition[], secondary: CharacterDefinition[]): CharacterDefinition[] {
+  const merged = new Map(primary.map((character) => [character.id, character]));
+  for (const character of secondary) merged.set(character.id, character);
+  return [...merged.values()];
 }
 
 function isNetworkError(error: Error): boolean {

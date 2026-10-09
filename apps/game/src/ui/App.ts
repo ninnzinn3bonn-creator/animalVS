@@ -28,6 +28,7 @@ import { loadLeaderboard, recordLeaderboardEntry, syncLeaderboard, type Leaderbo
 import type { GameController, GameHud, ResultReason } from "../game/GameController";
 import type { VersusMode } from "../versus/VersusMode";
 import { initialViewFromSearch } from "./InitialView";
+import { loadTurnstileScript } from "./turnstile";
 
 export class AppUi implements GameHud {
   private root!: HTMLElement;
@@ -68,6 +69,14 @@ export class AppUi implements GameHud {
   private captureSubmitting = false;
   private readonly captureCooldown = new CaptureCooldown();
   private captureCooldownTimer: number | null = null;
+  private captureCountdownEl!: HTMLElement;
+  private captureReviewEl!: HTMLElement;
+  private captureReviewImageEl!: HTMLImageElement;
+  private pendingCapture: Blob | null = null;
+  private pendingCaptureUrl: string | null = null;
+  private characterRefreshHandler: (() => Promise<void>) | null = null;
+  private turnstileToken = "";
+  private turnstileWidgetId: string | null = null;
   private controller: GameController | null = null;
   private versusMode: VersusMode | null = null;
   private currentView = "title";
@@ -169,6 +178,15 @@ export class AppUi implements GameHud {
           <div class="capture-grid">
             <div class="camera-box">
               <video id="camera-preview" autoplay playsinline muted></video>
+              <div class="body-guide" aria-hidden="true"><span></span></div>
+              <div id="capture-countdown" class="capture-countdown" aria-live="assertive"></div>
+              <div id="capture-review" class="capture-review" hidden>
+                <img id="capture-review-image" alt="撮影した写真の確認" />
+                <div class="capture-review-actions">
+                  <button type="button" data-action="camera-retake"><i data-lucide="refresh-ccw"></i><span>撮り直す</span></button>
+                  <button class="primary-action" type="button" data-action="camera-register"><i data-lucide="save"></i><span>この写真を登録</span></button>
+                </div>
+              </div>
               <button
                 class="camera-switch-button"
                 type="button"
@@ -188,8 +206,12 @@ export class AppUi implements GameHud {
                 <input id="participant-name" maxlength="60" placeholder="例：たにぐち" required />
               </label>
               <p id="capture-status" class="capture-status" role="status" aria-live="polite">
-                撮影後、キャラクターの作成完了まで10秒ほどかかります。
+                名前を入力し、全身がガイド内に入るように立ってください。
               </p>
+              <ol class="capture-steps" aria-label="キャラクター作成手順">
+                <li class="active">ポーズ</li><li>撮影確認</li><li>切り抜き</li><li>ゲームへ追加</li>
+              </ol>
+              <div id="capture-turnstile" class="capture-turnstile" hidden></div>
             </form>
           </div>
         </section>
@@ -250,12 +272,18 @@ export class AppUi implements GameHud {
     this.captureButtonEl = root.querySelector<HTMLButtonElement>("[data-action='camera-shot']")!;
     this.cameraStartButtonEl = root.querySelector<HTMLButtonElement>("[data-action='camera-start']")!;
     this.cameraSwitchButtonEl = root.querySelector<HTMLButtonElement>("[data-action='camera-switch']")!;
+    this.captureCountdownEl = this.byId("capture-countdown");
+    this.captureReviewEl = this.byId("capture-review");
+    this.captureReviewImageEl = this.byId("capture-review-image") as HTMLImageElement;
     this.deleteDialogEl = this.byId("delete-dialog") as HTMLDialogElement;
     this.deleteDialogMessageEl = this.byId("delete-dialog-message");
     this.deleteConfirmButtonEl = root.querySelector<HTMLButtonElement>("[data-action='character-delete-confirm']")!;
     this.updateCameraSwitchButton();
     this.updateMusicButton();
     this.setCaptureAvailability(false);
+    void this.setupTurnstile().catch(() => {
+      this.setCaptureStatus("error", "セキュリティ確認を読み込めませんでした。通信状況を確認してください。");
+    });
     this.renderIcons();
     this.bindEvents();
     const initialView = initialViewFromSearch(window.location.search);
@@ -275,6 +303,10 @@ export class AppUi implements GameHud {
 
   setVersusMode(versusMode: VersusMode): void {
     this.versusMode = versusMode;
+  }
+
+  setCharacterRefreshHandler(handler: () => Promise<void>): void {
+    this.characterRefreshHandler = handler;
   }
 
   setCaptureAvailability(available: boolean): void {
@@ -444,6 +476,8 @@ export class AppUi implements GameHud {
       }
       if (action === "camera-switch") void this.switchCamera();
       if (action === "camera-shot") void this.capture();
+      if (action === "camera-retake") this.clearCaptureReview();
+      if (action === "camera-register") void this.submitCapture();
     });
     this.root.addEventListener("change", (event) => {
       const toggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-character-enabled]");
@@ -670,13 +704,14 @@ export class AppUi implements GameHud {
     if (this.captureSubmitting || this.captureCooldown.isActive()) {
       return;
     }
-    this.captureSubmitting = true;
-    this.updateCaptureButton();
-    this.setCaptureStatus("processing", "写真を送信しています。そのままお待ちください。");
     try {
       if (!this.stream) {
         await this.startCamera();
       }
+      this.captureSubmitting = true;
+      this.updateCaptureButton();
+      this.setCaptureStatus("info", "そのままのポーズでお待ちください。");
+      await this.runCaptureCountdown();
       const width = this.videoEl.videoWidth || 960;
       const height = this.videoEl.videoHeight || 720;
       const canvas = document.createElement("canvas");
@@ -684,27 +719,154 @@ export class AppUi implements GameHud {
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob((value) => (value ? resolve(value) : reject(new Error("撮影に失敗しました"))), "image/jpeg", 0.92)
       );
-      const form = new FormData();
-      const name = this.nameInput.value.trim() || `キャラクター-${Date.now()}`;
-      form.append("name", name);
-      form.append("photo", blob, `${name}.jpg`);
-      const response = await fetch(serviceEndpoints.apiUrl("/api/photos"), { method: "POST", body: form });
-      if (!response.ok) {
-        throw new Error(`写真の送信に失敗しました: ${response.status}`);
-      }
-      this.startCaptureCooldown();
-      this.setCaptureStatus(
-        "processing",
-        "写真を受け付けました。次の撮影は5秒後にできます。キャラクターの作成完了まで10秒ほどお待ちください。"
-      );
-      this.notify("写真を受け付けました。作成完了まで10秒ほどお待ちください");
+      this.showCaptureReview(blob);
+      this.setCaptureStatus("info", "写真を確認してください。全身が写っていれば登録できます。");
     } catch {
-      this.setCaptureStatus("error", "写真を送信できませんでした。通信状況やカメラ権限を確認して、もう一度お試しください。");
-      this.notify("写真を送信できませんでした");
+      this.setCaptureStatus("error", "撮影できませんでした。カメラ権限を確認して、もう一度お試しください。");
     } finally {
       this.captureSubmitting = false;
       this.updateCaptureButton();
     }
+  }
+
+  private async submitCapture(): Promise<void> {
+    if (!this.pendingCapture || this.captureSubmitting) return;
+    this.captureSubmitting = true;
+    this.updateCaptureButton();
+    this.setCaptureStep(2);
+    this.setCaptureStatus("processing", "写真を送信しています。キャラクターの作成完了まで10秒ほどお待ちください。");
+    const name = this.nameInput.value.trim() || `キャラクター-${Date.now()}`;
+    try {
+      const cloudForm = new FormData();
+      cloudForm.append("name", name);
+      cloudForm.append("photo", this.pendingCapture, `${name}.jpg`);
+      if (this.turnstileToken) cloudForm.append("turnstileToken", this.turnstileToken);
+      const sessionId = this.captureSessionId();
+      const cloudResponse = await fetch(serviceEndpoints.apiUrl("/api/capture-jobs"), {
+        method: "POST",
+        headers: { "x-capture-session": sessionId },
+        body: cloudForm
+      });
+
+      if (cloudResponse.ok) {
+        const job = (await cloudResponse.json()) as { jobId: string; jobToken: string };
+        await this.pollCaptureJob(job.jobId, job.jobToken);
+      } else if (cloudResponse.status === 404 || cloudResponse.status === 503) {
+        await this.submitLegacyCapture(name);
+      } else {
+        const body = (await cloudResponse.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message ?? `写真の送信に失敗しました: ${cloudResponse.status}`);
+      }
+      this.startCaptureCooldown();
+      this.resetTurnstile();
+    } catch (error) {
+      this.setCaptureStatus("error", error instanceof Error ? error.message : "キャラクターを作成できませんでした。");
+      this.notify("キャラクターを作成できませんでした");
+    } finally {
+      this.captureSubmitting = false;
+      this.updateCaptureButton();
+    }
+  }
+
+  private async submitLegacyCapture(name: string): Promise<void> {
+    const form = new FormData();
+    form.append("name", name);
+    form.append("photo", this.pendingCapture!, `${name}.jpg`);
+    const response = await fetch(serviceEndpoints.apiUrl("/api/photos"), { method: "POST", body: form });
+    if (!response.ok) throw new Error(`写真の送信に失敗しました: ${response.status}`);
+    this.setCaptureStatus("processing", "写真を受け付けました。作成完了まで10秒ほどお待ちください。");
+    this.notify("写真を受け付けました。作成完了まで10秒ほどお待ちください");
+  }
+
+  private async pollCaptureJob(jobId: string, jobToken: string): Promise<void> {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 120_000) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1200));
+      const response = await fetch(serviceEndpoints.apiUrl(`/api/capture-jobs/${jobId}`), {
+        headers: { authorization: `Bearer ${jobToken}` },
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("作成状況を確認できませんでした");
+      const job = (await response.json()) as { status: string; error?: string | null };
+      if (job.status === "failed") throw new Error(job.error ?? "キャラクター生成に失敗しました");
+      if (job.status === "completed") {
+        this.setCaptureStep(3);
+        await this.characterRefreshHandler?.();
+        this.characterCreated();
+        this.clearCaptureReview();
+        return;
+      }
+      this.setCaptureStatus("processing", "人物を切り抜き、当たり判定を作成しています。そのままお待ちください。");
+    }
+    throw new Error("処理に時間がかかっています。しばらくしてキャラクター一覧を確認してください");
+  }
+
+  private async runCaptureCountdown(): Promise<void> {
+    for (const count of [3, 2, 1]) {
+      this.captureCountdownEl.textContent = String(count);
+      this.captureCountdownEl.classList.add("show");
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+    }
+    this.captureCountdownEl.textContent = "撮影！";
+    await new Promise((resolve) => window.setTimeout(resolve, 220));
+    this.captureCountdownEl.classList.remove("show");
+    this.captureCountdownEl.textContent = "";
+  }
+
+  private showCaptureReview(blob: Blob): void {
+    this.clearCaptureReview();
+    this.pendingCapture = blob;
+    this.pendingCaptureUrl = URL.createObjectURL(blob);
+    this.captureReviewImageEl.src = this.pendingCaptureUrl;
+    this.captureReviewEl.hidden = false;
+    this.setCaptureStep(1);
+  }
+
+  private clearCaptureReview(): void {
+    if (this.pendingCaptureUrl) URL.revokeObjectURL(this.pendingCaptureUrl);
+    this.pendingCapture = null;
+    this.pendingCaptureUrl = null;
+    this.captureReviewImageEl.removeAttribute("src");
+    this.captureReviewEl.hidden = true;
+    this.setCaptureStep(0);
+  }
+
+  private setCaptureStep(index: number): void {
+    this.root.querySelectorAll(".capture-steps li").forEach((item, itemIndex) => {
+      item.classList.toggle("active", itemIndex === index);
+      item.classList.toggle("complete", itemIndex < index);
+    });
+  }
+
+  private captureSessionId(): string {
+    const key = "human-stack-battle.capture-session";
+    let value = sessionStorage.getItem(key);
+    if (!value) {
+      value = crypto.randomUUID().replaceAll("-", "");
+      sessionStorage.setItem(key, value);
+    }
+    return value;
+  }
+
+  private async setupTurnstile(): Promise<void> {
+    const siteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "").trim();
+    if (!siteKey) return;
+    const container = this.byId("capture-turnstile");
+    container.hidden = false;
+    await loadTurnstileScript();
+    this.turnstileWidgetId = window.turnstile?.render(container, {
+      sitekey: siteKey,
+      theme: "light",
+      size: "flexible",
+      callback: (token: string) => { this.turnstileToken = token; },
+      "expired-callback": () => { this.turnstileToken = ""; },
+      "error-callback": () => { this.turnstileToken = ""; }
+    }) ?? null;
+  }
+
+  private resetTurnstile(): void {
+    this.turnstileToken = "";
+    if (this.turnstileWidgetId) window.turnstile?.reset(this.turnstileWidgetId);
   }
 
   private startCaptureCooldown(): void {

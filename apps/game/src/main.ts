@@ -25,7 +25,7 @@ ui.mount(root, canvas);
 
 const repository = new CharacterRepository();
 await repository.load();
-ui.setCaptureAvailability(repository.isRemoteAvailable());
+ui.setCaptureAvailability(await captureServiceAvailable());
 
 const world = new PhysicsWorld(canvas, width, height);
 const controller = new GameController(world, repository, ui);
@@ -39,6 +39,11 @@ if (!versusRoot) {
 const versusMode = new VersusMode(repository, music);
 versusMode.mount(versusRoot);
 ui.setVersusMode(versusMode);
+ui.setCharacterRefreshHandler(async () => {
+  await repository.load();
+  controller.refreshCharacters();
+  versusMode.refreshCharacters();
+});
 
 if (repository.isRemoteAvailable()) {
   new CharacterSocket(
@@ -69,4 +74,20 @@ if (repository.isRemoteAvailable()) {
     },
     (connected) => ui.setCaptureAvailability(connected)
   ).connect();
+}
+
+async function captureServiceAvailable(): Promise<boolean> {
+  for (const path of ["/api/health"]) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 2200);
+    try {
+      const response = await fetch(serviceEndpoints.apiUrl(path), { cache: "no-store", signal: controller.signal });
+      if (response.ok && response.headers.get("content-type")?.includes("application/json")) return true;
+    } catch {
+      // Try the next configured capture backend.
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  return false;
 }

@@ -13,6 +13,7 @@ node_modules/
 !apps/game/.env.pages
 apps/game/wrangler.jsonc
 apps/capture-proxy-worker/wrangler.jsonc
+apps/image-processing-worker/wrangler.jsonc
 
 # Runtime data. This includes source photos, cutouts, masks, manifests, logs,
 # process IDs, and the DPAPI-encrypted Cloudflare Tunnel token.

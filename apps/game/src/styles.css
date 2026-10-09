@@ -1480,6 +1480,91 @@ video {
   height: 22px;
 }
 
+.body-guide {
+  position: absolute;
+  inset: 8% 16% 18%;
+  z-index: 1;
+  pointer-events: none;
+  border: 2px dashed rgba(255, 255, 255, 0.68);
+  border-radius: 46% 46% 34% 34% / 20% 20% 16% 16%;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.body-guide::before {
+  position: absolute;
+  top: 3%;
+  left: 50%;
+  width: 23%;
+  aspect-ratio: 1;
+  border: 2px dashed rgba(255, 255, 255, 0.68);
+  border-radius: 50%;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.capture-countdown {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 72px;
+  font-weight: 800;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(2px);
+}
+
+.capture-countdown.show {
+  display: grid;
+}
+
+.capture-review {
+  position: absolute;
+  inset: 4px;
+  z-index: 4;
+  overflow: hidden;
+  border-radius: 19px;
+  background: #111318;
+}
+
+.capture-review[hidden] {
+  display: none;
+}
+
+.capture-review img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.capture-review-actions {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 7px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  background: rgba(238, 244, 248, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.capture-review-actions button {
+  min-height: 48px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.capture-review-actions .primary-action {
+  background: rgba(0, 122, 255, 0.9);
+  color: #ffffff;
+}
+
 .capture-form {
   display: flex;
   flex-direction: column;
@@ -1584,6 +1669,39 @@ input::placeholder {
   border-color: rgba(255, 59, 48, 0.3);
   background: rgba(255, 239, 238, 0.82);
   color: #9e241d;
+}
+
+.capture-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capture-steps li {
+  min-width: 0;
+  padding: 8px 4px;
+  border-top: 3px solid rgba(60, 60, 67, 0.16);
+  color: var(--tertiary-label);
+  font-size: 11px;
+  text-align: center;
+}
+
+.capture-steps li.active {
+  border-color: var(--system-blue);
+  color: var(--label);
+  font-weight: 700;
+}
+
+.capture-steps li.complete {
+  border-color: var(--system-green);
+  color: var(--secondary-label);
+}
+
+.capture-turnstile {
+  min-height: 65px;
 }
 
 .roster {

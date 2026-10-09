@@ -8,7 +8,7 @@ from PIL import Image, ImageFilter
 
 
 def remove_background(image: Image.Image) -> Image.Image:
-    """Return an RGBA image. Prefer rembg, fall back to a soft rectangular mask."""
+    """Return an RGBA image, with an explicit development-only fallback."""
     rgba = image.convert("RGBA")
     try:
         from rembg import remove
@@ -20,7 +20,9 @@ def remove_background(image: Image.Image) -> Image.Image:
             return Image.open(BytesIO(output)).convert("RGBA")
         return output.convert("RGBA")
     except Exception:
-        return fallback_mask(rgba)
+        if os.environ.get("ALLOW_SEGMENTATION_FALLBACK", "true").lower() in {"1", "true", "yes", "on"}:
+            return fallback_mask(rgba)
+        raise
 
 
 @lru_cache(maxsize=2)

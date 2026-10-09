@@ -7,6 +7,7 @@
 ## ドキュメント
 
 - [画像処理システム](docs/IMAGE_PROCESSING.md): 切り抜き、当たり判定、保存形式、運用、安全性、クラウド移行を詳しく説明しています。
+- [クラウド画像処理](docs/CLOUD_IMAGE_PROCESSING.md): R2、D1、Queue、Containerを使う常時稼働版の実装と導入手順です。
 - [アーキテクチャ](docs/ARCHITECTURE.md)
 - [固定Capture経路](docs/CAPTURE_FIXED_ROUTE.md)
 - [開発記録](docs/DEVELOPMENT_RECORD.md)

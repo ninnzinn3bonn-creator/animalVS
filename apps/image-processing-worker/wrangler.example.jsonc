@@ -1,0 +1,56 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "human-stack-image-processing",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "TURNSTILE_REQUIRED": "false",
+    "TURNSTILE_HOSTNAME": "human-stack-battle-game.pages.dev",
+    "ALLOWED_ORIGIN": "https://human-stack-battle-game.pages.dev"
+  },
+  "r2_buckets": [
+    { "binding": "CAPTURE_FILES", "bucket_name": "human-stack-capture-files" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "CAPTURE_DB",
+      "database_name": "human-stack-capture",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "CAPTURE_QUEUE", "queue": "human-stack-capture-jobs" }
+    ],
+    "consumers": [
+      {
+        "queue": "human-stack-capture-jobs",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+        "max_concurrency": 1
+      }
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "IMAGE_PROCESSOR", "class_name": "ImageProcessor" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ImageProcessor"] }
+  ],
+  "containers": [
+    {
+      "class_name": "ImageProcessor",
+      "image": "../../services/image-worker/Dockerfile",
+      "image_build_context": "../../services/image-worker",
+      "max_instances": 1,
+      "instance_type": "standard-1"
+    }
+  ]
+}

@@ -16,8 +16,9 @@
     "public:server": "node --env-file=.env.public apps/server/dist/index.js",
     "setup:python": "python -m pip install -r services/image-worker/requirements.txt",
     "test": "vitest run",
+    "test:python": "python -m unittest discover -s services/image-worker/tests -p \"test_*.py\"",
     "test:e2e": "vitest run tests/e2e.spec.ts",
-    "typecheck": "tsc -p apps/server/tsconfig.json && tsc -p apps/game/tsconfig.json && tsc -p apps/capture-proxy-worker/tsconfig.json",
+    "typecheck": "tsc -p apps/server/tsconfig.json && tsc -p apps/game/tsconfig.json && tsc -p apps/capture-proxy-worker/tsconfig.json && tsc -p apps/image-processing-worker/tsconfig.json",
     "build": "npm run sync:static && npm run typecheck && vite build --config apps/game/vite.config.ts",
     "build:pages": "npm run sync:static && npm run typecheck && vite build --config apps/game/vite.config.ts --mode pages",
     "deploy:capture-proxy": "wrangler deploy --config apps/capture-proxy-worker/wrangler.jsonc",
@@ -32,11 +33,12 @@
     "lucide": "^0.468.0",
     "matter-js": "^0.20.0",
     "multer": "^2.0.2",
-    "sharp": "^0.34.3",
+    "sharp": "^0.35.5",
     "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@cloudflare/containers": "^0.3.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/matter-js": "^0.19.8",
@@ -48,6 +50,6 @@
     "typescript": "^5.8.3",
     "vite": "^7.0.5",
     "vitest": "^3.2.4",
-    "wrangler": "^4.111.0"
+    "wrangler": "^4.149.0"
   }
 }

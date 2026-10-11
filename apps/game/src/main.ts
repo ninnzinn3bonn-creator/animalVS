@@ -72,7 +72,10 @@ if (repository.isRemoteAvailable()) {
         ui.characterCreationFailed();
       }
     },
-    (connected) => ui.setCaptureAvailability(connected)
+    (connected) => {
+      if (connected) ui.setCaptureAvailability(true);
+      else void captureServiceAvailable().then((available) => ui.setCaptureAvailability(available));
+    }
   ).connect();
 }
 

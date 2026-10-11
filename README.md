@@ -7,7 +7,6 @@
 ## ドキュメント
 
 - [画像処理システム](docs/IMAGE_PROCESSING.md): 切り抜き、当たり判定、保存形式、運用、安全性、クラウド移行を詳しく説明しています。
-- [クラウド画像処理](docs/CLOUD_IMAGE_PROCESSING.md): R2、D1、Queue、Containerを使う常時稼働版の実装と導入手順です。
 - [アーキテクチャ](docs/ARCHITECTURE.md)
 - [固定Capture経路](docs/CAPTURE_FIXED_ROUTE.md)
 - [開発記録](docs/DEVELOPMENT_RECORD.md)
@@ -77,7 +76,7 @@ npm run capture:stop
 
 `.env.public.example`を`.env.public`へコピーし、公開元URLを設定してください。Named Tunnelのトークンとメタデータは`runtime/`へ保存され、Gitには含まれません。
 
-現在の公開構成では、ゲーム本体とランキングはCloudflare上で常時利用できますが、新規撮影と画像処理はこのPCのCaptureサービスが起動中のときだけ利用できます。イベントでの短時間利用には適しますが、常設運用には安定性が足りません。常設する場合は、画像処理APIと`rembg`ワーカーをクラウドサーバまたはGPU対応レンタルサーバへ移すことを推奨します。具体的な移行案は[画像処理システム](docs/IMAGE_PROCESSING.md#クラウドサーバへの移行を推奨)に記載しています。
+現在の正式構成では、ゲーム本体とランキングはCloudflare上で常時利用できます。新規撮影と画像処理だけは、このPCのCaptureサービスが起動中のときに利用できます。イベントでの短時間利用と月額費用ゼロを優先した構成です。将来、常設運用が必要になった場合の選択肢は[画像処理システム](docs/IMAGE_PROCESSING.md#将来クラウドへ移行する場合)に記載しています。
 
 ## Cloudflare設定
 

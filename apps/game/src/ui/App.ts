@@ -28,7 +28,6 @@ import { loadLeaderboard, recordLeaderboardEntry, syncLeaderboard, type Leaderbo
 import type { GameController, GameHud, ResultReason } from "../game/GameController";
 import type { VersusMode } from "../versus/VersusMode";
 import { initialViewFromSearch } from "./InitialView";
-import { loadTurnstileScript } from "./turnstile";
 
 export class AppUi implements GameHud {
   private root!: HTMLElement;
@@ -74,9 +73,9 @@ export class AppUi implements GameHud {
   private captureReviewImageEl!: HTMLImageElement;
   private pendingCapture: Blob | null = null;
   private pendingCaptureUrl: string | null = null;
+  private captureOfflineActionsEl!: HTMLElement;
+  private captureCompleteEl!: HTMLElement;
   private characterRefreshHandler: (() => Promise<void>) | null = null;
-  private turnstileToken = "";
-  private turnstileWidgetId: string | null = null;
   private controller: GameController | null = null;
   private versusMode: VersusMode | null = null;
   private currentView = "title";
@@ -238,7 +237,17 @@ export class AppUi implements GameHud {
               <ol class="capture-steps" aria-label="キャラクター作成手順">
                 <li class="active">ポーズ</li><li>撮影確認</li><li>切り抜き</li><li>ゲームへ追加</li>
               </ol>
-              <div id="capture-turnstile" class="capture-turnstile" hidden></div>
+              <div id="capture-offline-actions" class="capture-offline-actions" hidden>
+                <button type="button" data-action="capture-retry"><i data-lucide="refresh-ccw"></i><span>接続を再確認</span></button>
+                <button type="button" data-view="start"><i data-lucide="chevron-left"></i><span>遊び方を選ぶ</span></button>
+              </div>
+              <div id="capture-complete" class="capture-complete" hidden>
+                <strong>キャラクターができました！</strong>
+                <div>
+                  <button type="button" data-view="game"><i data-lucide="gamepad-2"></i><span>1人で遊ぶ</span></button>
+                  <button type="button" data-view="versus"><i data-lucide="swords"></i><span>2人で対戦</span></button>
+                </div>
+              </div>
             </form>
           </div>
         </section>
@@ -302,15 +311,14 @@ export class AppUi implements GameHud {
     this.captureCountdownEl = this.byId("capture-countdown");
     this.captureReviewEl = this.byId("capture-review");
     this.captureReviewImageEl = this.byId("capture-review-image") as HTMLImageElement;
+    this.captureOfflineActionsEl = this.byId("capture-offline-actions");
+    this.captureCompleteEl = this.byId("capture-complete");
     this.deleteDialogEl = this.byId("delete-dialog") as HTMLDialogElement;
     this.deleteDialogMessageEl = this.byId("delete-dialog-message");
     this.deleteConfirmButtonEl = root.querySelector<HTMLButtonElement>("[data-action='character-delete-confirm']")!;
     this.updateCameraSwitchButton();
     this.updateMusicButton();
     this.setCaptureAvailability(false);
-    void this.setupTurnstile().catch(() => {
-      this.setCaptureStatus("error", "セキュリティ確認を読み込めませんでした。通信状況を確認してください。");
-    });
     this.renderIcons();
     this.bindEvents();
     const initialView = initialViewFromSearch(window.location.search);
@@ -341,11 +349,15 @@ export class AppUi implements GameHud {
     this.cameraStartButtonEl.disabled = !available;
     this.cameraSwitchButtonEl.disabled = !available;
     this.nameInput.disabled = !available;
+    this.captureOfflineActionsEl.hidden = available;
     this.updateCaptureButton();
     if (!available) {
       this.stopCamera();
-      this.setCaptureStatus("info", "PC側の画像処理は現在停止中です。ゲームはそのまま遊べます。");
-    } else if (this.captureStatusEl.textContent?.includes("停止中")) {
+      this.setCaptureStatus("info", "現在キャラ撮影はお休み中です。1人用・2人対戦はそのまま遊べます。");
+    } else if (
+      this.captureStatusEl.textContent?.includes("停止中") ||
+      this.captureStatusEl.textContent?.includes("お休み中")
+    ) {
       this.setCaptureStatus("info", "撮影後、キャラクターの作成完了まで10秒ほどかかります。");
     }
   }
@@ -415,6 +427,9 @@ export class AppUi implements GameHud {
   }
 
   characterCreated(): void {
+    this.clearCaptureReview();
+    this.setCaptureStep(3);
+    this.captureCompleteEl.hidden = false;
     this.setCaptureStatus("success", "キャラクターが完成し、ゲームに追加されました。");
     this.notify("新しいキャラクターをゲームに追加しました");
   }
@@ -510,6 +525,7 @@ export class AppUi implements GameHud {
       if (action === "camera-shot") void this.capture();
       if (action === "camera-retake") this.clearCaptureReview();
       if (action === "camera-register") void this.submitCapture();
+      if (action === "capture-retry") void this.retryCaptureConnection();
     });
     this.root.addEventListener("change", (event) => {
       const toggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-character-enabled]");
@@ -770,28 +786,8 @@ export class AppUi implements GameHud {
     this.setCaptureStatus("processing", "写真を送信しています。キャラクターの作成完了まで10秒ほどお待ちください。");
     const name = this.nameInput.value.trim() || `キャラクター-${Date.now()}`;
     try {
-      const cloudForm = new FormData();
-      cloudForm.append("name", name);
-      cloudForm.append("photo", this.pendingCapture, `${name}.jpg`);
-      if (this.turnstileToken) cloudForm.append("turnstileToken", this.turnstileToken);
-      const sessionId = this.captureSessionId();
-      const cloudResponse = await fetch(serviceEndpoints.apiUrl("/api/capture-jobs"), {
-        method: "POST",
-        headers: { "x-capture-session": sessionId },
-        body: cloudForm
-      });
-
-      if (cloudResponse.ok) {
-        const job = (await cloudResponse.json()) as { jobId: string; jobToken: string };
-        await this.pollCaptureJob(job.jobId, job.jobToken);
-      } else if (cloudResponse.status === 404 || cloudResponse.status === 503) {
-        await this.submitLegacyCapture(name);
-      } else {
-        const body = (await cloudResponse.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(body?.message ?? `写真の送信に失敗しました: ${cloudResponse.status}`);
-      }
+      await this.submitLocalCapture(name);
       this.startCaptureCooldown();
-      this.resetTurnstile();
     } catch (error) {
       this.setCaptureStatus("error", error instanceof Error ? error.message : "キャラクターを作成できませんでした。");
       this.notify("キャラクターを作成できませんでした");
@@ -801,7 +797,8 @@ export class AppUi implements GameHud {
     }
   }
 
-  private async submitLegacyCapture(name: string): Promise<void> {
+  private async submitLocalCapture(name: string): Promise<void> {
+    const existingIds = await this.loadRemoteCharacterIds();
     const form = new FormData();
     form.append("name", name);
     form.append("photo", this.pendingCapture!, `${name}.jpg`);
@@ -809,26 +806,28 @@ export class AppUi implements GameHud {
     if (!response.ok) throw new Error(`写真の送信に失敗しました: ${response.status}`);
     this.setCaptureStatus("processing", "写真を受け付けました。作成完了まで10秒ほどお待ちください。");
     this.notify("写真を受け付けました。作成完了まで10秒ほどお待ちください");
+    await this.waitForLocalCharacter(existingIds);
+    await this.characterRefreshHandler?.();
+    this.characterCreated();
   }
 
-  private async pollCaptureJob(jobId: string, jobToken: string): Promise<void> {
+  private async loadRemoteCharacterIds(): Promise<Set<string>> {
+    try {
+      const response = await fetch(serviceEndpoints.apiUrl("/api/characters"), { cache: "no-store" });
+      if (!response.ok) return new Set();
+      const body = (await response.json()) as { characters?: Array<{ id: string }> };
+      return new Set((body.characters ?? []).map((character) => character.id));
+    } catch {
+      return new Set();
+    }
+  }
+
+  private async waitForLocalCharacter(existingIds: Set<string>): Promise<void> {
     const startedAt = Date.now();
     while (Date.now() - startedAt < 120_000) {
-      await new Promise((resolve) => window.setTimeout(resolve, 1200));
-      const response = await fetch(serviceEndpoints.apiUrl(`/api/capture-jobs/${jobId}`), {
-        headers: { authorization: `Bearer ${jobToken}` },
-        cache: "no-store"
-      });
-      if (!response.ok) throw new Error("作成状況を確認できませんでした");
-      const job = (await response.json()) as { status: string; error?: string | null };
-      if (job.status === "failed") throw new Error(job.error ?? "キャラクター生成に失敗しました");
-      if (job.status === "completed") {
-        this.setCaptureStep(3);
-        await this.characterRefreshHandler?.();
-        this.characterCreated();
-        this.clearCaptureReview();
-        return;
-      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      const ids = await this.loadRemoteCharacterIds();
+      if ([...ids].some((id) => !existingIds.has(id))) return;
       this.setCaptureStatus("processing", "人物を切り抜き、当たり判定を作成しています。そのままお待ちください。");
     }
     throw new Error("処理に時間がかかっています。しばらくしてキャラクター一覧を確認してください");
@@ -848,6 +847,7 @@ export class AppUi implements GameHud {
 
   private showCaptureReview(blob: Blob): void {
     this.clearCaptureReview();
+    this.captureCompleteEl.hidden = true;
     this.pendingCapture = blob;
     this.pendingCaptureUrl = URL.createObjectURL(blob);
     this.captureReviewImageEl.src = this.pendingCaptureUrl;
@@ -871,35 +871,22 @@ export class AppUi implements GameHud {
     });
   }
 
-  private captureSessionId(): string {
-    const key = "human-stack-battle.capture-session";
-    let value = sessionStorage.getItem(key);
-    if (!value) {
-      value = crypto.randomUUID().replaceAll("-", "");
-      sessionStorage.setItem(key, value);
+  private async retryCaptureConnection(): Promise<void> {
+    this.setCaptureStatus("processing", "撮影サービスへ接続しています…");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 3000);
+    try {
+      const response = await fetch(serviceEndpoints.apiUrl("/api/health"), {
+        cache: "no-store",
+        signal: controller.signal
+      });
+      this.setCaptureAvailability(response.ok);
+      if (response.ok) this.setCaptureStatus("info", "撮影サービスへ接続しました。カメラを起動できます。");
+    } catch {
+      this.setCaptureAvailability(false);
+    } finally {
+      window.clearTimeout(timeout);
     }
-    return value;
-  }
-
-  private async setupTurnstile(): Promise<void> {
-    const siteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "").trim();
-    if (!siteKey) return;
-    const container = this.byId("capture-turnstile");
-    container.hidden = false;
-    await loadTurnstileScript();
-    this.turnstileWidgetId = window.turnstile?.render(container, {
-      sitekey: siteKey,
-      theme: "light",
-      size: "flexible",
-      callback: (token: string) => { this.turnstileToken = token; },
-      "expired-callback": () => { this.turnstileToken = ""; },
-      "error-callback": () => { this.turnstileToken = ""; }
-    }) ?? null;
-  }
-
-  private resetTurnstile(): void {
-    this.turnstileToken = "";
-    if (this.turnstileWidgetId) window.turnstile?.reset(this.turnstileWidgetId);
   }
 
   private startCaptureCooldown(): void {

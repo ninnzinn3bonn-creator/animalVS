@@ -117,13 +117,40 @@ export class AppUi implements GameHud {
 
         <section class="view active" id="view-title">
           <div class="title-screen">
-            <button class="title-enter" type="button" data-action="title-enter" aria-label="1人用ゲーム画面へ進む">
+            <button class="title-enter" type="button" data-action="title-enter" aria-label="遊び方を選ぶ画面へ進む">
               <span class="title-logo-backdrop" aria-hidden="true"></span>
               <img class="title-logo" src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
               <span class="title-tap-backdrop" aria-hidden="true"></span>
               <img class="title-tap-prompt" src="/assets/backgrounds/tap-prompt-v1.png" alt="タップしてね" />
             </button>
             <img class="title-menu-callout" src="/assets/backgrounds/menu-callout-v1.png" alt="メニュー" />
+          </div>
+        </section>
+
+        <section class="view" id="view-start">
+          <div class="start-choice-screen">
+            <button class="start-choice-back" type="button" data-action="start-choice-back" aria-label="タイトルへ戻る">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <div class="start-choice-heading">
+              <span class="start-choice-logo-backdrop" aria-hidden="true"></span>
+              <img src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
+              <h2>なにをする？</h2>
+            </div>
+            <div class="start-choice-actions" aria-label="遊び方を選択">
+              <button class="capture-choice" type="button" data-view="capture">
+                <i data-lucide="camera"></i>
+                <span><strong>キャラをつくる</strong><small>写真を撮ってゲームに追加</small></span>
+              </button>
+              <button type="button" data-view="game">
+                <i data-lucide="gamepad-2"></i>
+                <span><strong>1人で遊ぶ</strong><small>高さに挑戦</small></span>
+              </button>
+              <button type="button" data-view="versus">
+                <i data-lucide="swords"></i>
+                <span><strong>2人で対戦</strong><small>同じ画面でバトル</small></span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -418,7 +445,12 @@ export class AppUi implements GameHud {
         return;
       }
       if (action === "title-enter") {
-        this.switchView("game");
+        this.switchView("start");
+        this.closeMenu();
+        return;
+      }
+      if (action === "start-choice-back") {
+        this.switchView("title");
         this.closeMenu();
         return;
       }
@@ -503,6 +535,7 @@ export class AppUi implements GameHud {
     this.currentView = view;
     this.music.setActive("solo", view === "game" && this.soloMode === "playing");
     this.root.classList.toggle("title-view", view === "title");
+    this.root.classList.toggle("start-view", view === "start");
     this.root.classList.toggle("game-view", view === "game");
     this.root.classList.toggle("versus-view", view === "versus");
     this.root.querySelectorAll(".view").forEach((el) => el.classList.toggle("active", el.id === `view-${view}`));

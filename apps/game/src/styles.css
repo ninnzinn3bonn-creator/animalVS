@@ -94,6 +94,7 @@ button:disabled {
 }
 
 #app.title-view,
+#app.start-view,
 #app.game-view {
   width: 100%;
   height: 100dvh;
@@ -220,6 +221,130 @@ h1 {
   min-height: 100dvh;
   place-items: start center;
   overflow: hidden;
+}
+
+#view-start.active {
+  display: grid;
+  min-height: 100dvh;
+  place-items: start center;
+  overflow: hidden;
+}
+
+.start-choice-screen {
+  position: relative;
+  display: grid;
+  width: min(100vw, calc(100dvh * 390 / 680), 480px);
+  height: 100dvh;
+  grid-template-rows: minmax(190px, 42%) 1fr;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background-color: var(--content-background);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.34)),
+    url("/assets/backgrounds/crayon-seaside-v1.webp");
+  background-position: left center;
+  background-size: cover;
+  box-shadow: var(--shadow-soft), 0 0 0 1px rgba(60, 60, 67, 0.08);
+}
+
+.start-choice-back {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 3;
+  display: grid;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+}
+
+.start-choice-heading {
+  position: relative;
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  padding: 60px 8px 22px;
+}
+
+.start-choice-heading img {
+  position: relative;
+  z-index: 1;
+  width: 96%;
+  height: auto;
+  object-fit: contain;
+}
+
+.start-choice-logo-backdrop {
+  position: absolute;
+  right: 1%;
+  bottom: 50px;
+  left: 1%;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.start-choice-heading h2 {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.start-choice-actions {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px 18px max(22px, env(safe-area-inset-bottom));
+}
+
+.start-choice-actions button {
+  display: grid;
+  min-height: 78px;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 9px 24px rgba(48, 64, 80, 0.14), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  text-align: left;
+  backdrop-filter: blur(18px);
+}
+
+.start-choice-actions button.capture-choice {
+  border-color: rgba(0, 122, 255, 0.36);
+  background: rgba(235, 247, 255, 0.9);
+}
+
+.start-choice-actions .lucide {
+  width: 34px;
+  height: 34px;
+  justify-self: center;
+  color: var(--system-blue);
+}
+
+.start-choice-actions span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.start-choice-actions strong {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.start-choice-actions small {
+  color: var(--secondary-label);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .title-screen {

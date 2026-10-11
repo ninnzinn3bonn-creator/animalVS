@@ -126,6 +126,46 @@ describe("CharacterRepository Pages fallback", () => {
     expect(repository.getAll().find((item) => item.id === "two")?.enabled).toBe(false);
   });
 
+  it("keeps a successful online enable change after reloading", async () => {
+    const values = new Map<string, string>([
+      ["human-stack-battle.character-enabled", JSON.stringify({ one: true, two: false })]
+    ]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value)
+    };
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("api.example.test")) {
+        if (init?.method === "PATCH") return Response.json(character("two", true));
+        return Response.json({ characters: [character("one"), character("two", true)] });
+      }
+      return Response.json({ characters: [character("one"), character("two", true)] });
+    });
+    const repository = new CharacterRepository(fetcher, storage, endpoints);
+    await repository.load();
+
+    await repository.setEnabled("two", true);
+
+    const reloaded = new CharacterRepository(fetcher, storage, endpoints);
+    await reloaded.load();
+    expect(reloaded.getAll().find((item) => item.id === "two")?.enabled).toBe(true);
+  });
+
+  it("only returns enabled characters to the game", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("api.example.test")) {
+        return Response.json({ characters: [character("enabled"), character("disabled", false)] });
+      }
+      return Response.json({ characters: [] });
+    });
+    const repository = new CharacterRepository(fetcher, null, endpoints);
+    await repository.load();
+
+    for (let index = 0; index < 20; index += 1) {
+      expect(repository.random().id).toBe("enabled");
+    }
+  });
+
   it("falls back to a local hide when cloud deletion requires admin access", async () => {
     const values = new Map<string, string>();
     const storage = {

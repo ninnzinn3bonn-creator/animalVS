@@ -64,6 +64,7 @@ export class CharacterRepository {
           throw new Error("キャラクター設定の更新結果が不正です");
         }
         this.characters = this.characters.map((character) => (character.id === id ? updated : character));
+        this.saveLocalPreferences();
         return updated;
       } catch (error) {
         if (error instanceof Error && error.message === "少なくとも1人のキャラクターを有効にしてください") {

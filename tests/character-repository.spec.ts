@@ -104,4 +104,45 @@ describe("CharacterRepository Pages fallback", () => {
     await expect(repository.remove("one")).rejects.toThrow("削除する前に別のキャラクターを有効にしてください");
     expect(repository.getAll()).toHaveLength(2);
   });
+
+  it("keeps local enable preferences when cloud characters are available", async () => {
+    const values = new Map<string, string>([
+      ["human-stack-battle.character-enabled", JSON.stringify({ two: false })]
+    ]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value)
+    };
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("api.example.test")) {
+        return Response.json({ characters: [character("two")] });
+      }
+      return Response.json({ characters: [character("one")] });
+    });
+    const repository = new CharacterRepository(fetcher, storage, endpoints);
+
+    await repository.load();
+
+    expect(repository.getAll().find((item) => item.id === "two")?.enabled).toBe(false);
+  });
+
+  it("falls back to a local hide when cloud deletion requires admin access", async () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value)
+    };
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("api.example.test")) {
+        if (init?.method === "DELETE") return Response.json({ message: "forbidden" }, { status: 403 });
+        return Response.json({ characters: [character("one"), character("two")] });
+      }
+      return Response.json({ characters: [character("one"), character("two")] });
+    });
+    const repository = new CharacterRepository(fetcher, storage, endpoints);
+    await repository.load();
+
+    await expect(repository.remove("two")).resolves.toMatchObject({ id: "two" });
+    expect(repository.getAll().map((item) => item.id)).toEqual(["one"]);
+  });
 });

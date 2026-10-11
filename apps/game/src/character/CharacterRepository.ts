@@ -23,9 +23,9 @@ export class CharacterRepository {
     if (remoteCharacters) {
       this.remoteAvailable = true;
       const staticCharacters = await this.loadStatic();
-      this.characters = this.applyLocalDeletions(
+      this.characters = this.applyLocalPreferences(this.applyLocalDeletions(
         mergeById(this.normalize(staticCharacters, false), this.normalize(remoteCharacters, true))
-      );
+      ));
       return this.characters;
     }
 
@@ -107,9 +107,10 @@ export class CharacterRepository {
         if (response.status === 409) {
           throw new Error("削除する前に別のキャラクターを有効にしてください");
         }
-        if (!response.ok && response.status !== 404) {
+        if (!response.ok && response.status !== 404 && response.status !== 403) {
           throw new Error(`キャラクターの削除に失敗しました: ${response.status}`);
         }
+        if (response.status === 403) this.remoteAvailable = false;
       } catch (error) {
         if (error instanceof Error && !isNetworkError(error)) {
           throw error;

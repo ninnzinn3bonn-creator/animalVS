@@ -78,6 +78,19 @@ npm run capture:stop
 
 現在の正式構成では、ゲーム本体とランキングはCloudflare上で常時利用できます。新規撮影と画像処理だけは、このPCのCaptureサービスが起動中のときに利用できます。イベントでの短時間利用と月額費用ゼロを優先した構成です。将来、常設運用が必要になった場合の選択肢は[画像処理システム](docs/IMAGE_PROCESSING.md#将来クラウドへ移行する場合)に記載しています。
 
+## 管理画面
+
+公開版の`/admin/`から、Capture API、キャラクター画像、処理履歴、ランキング接続を確認できます。正本上の有効・無効変更と完全削除も管理画面に限定しています。一般プレイヤーによるキャラクター選択と非表示は端末内だけに保存され、正本を変更しません。
+
+管理IDとパスワードは`.env.public`へ設定します。パスワードをソースコードやCloudflare Pagesのフロントエンド変数へ入れないでください。
+
+```dotenv
+ADMIN_ID=your-email@example.com
+ADMIN_PASSWORD=replace-with-a-strong-password
+```
+
+認証セッションはCapture APIプロセスのメモリ上に保持されるため、PCまたはCapture APIを再起動すると再ログインが必要です。
+
 ## Cloudflare設定
 
 このリポジトリにはアカウント固有のD1 ID、Named Tunnel ID、認証トークンを含めません。次のサンプルをコピーし、自分のCloudflare環境の値を設定します。

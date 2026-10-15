@@ -4,6 +4,7 @@ import path from "node:path";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
+import { AdminAuth } from "./auth/AdminAuth.js";
 import { CharacterService } from "./characters/CharacterService.js";
 import { ManifestRepository } from "./characters/ManifestRepository.js";
 import { loadConfig } from "./config/env.js";
@@ -33,6 +34,7 @@ const sockets = new CharacterSocketServer(server);
 const characters = new CharacterService(manifest, config.charactersDir);
 const queue = new ProcessingQueue(config, characters, sockets);
 const watcher = new PhotoWatcher(config.inboxDir, queue);
+const adminAuth = new AdminAuth(config.adminId, config.adminPassword);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: config.maxUploadMb * 1024 * 1024 }
@@ -49,7 +51,36 @@ app.use(express.json());
 app.use("/characters", express.static(config.charactersDir, { maxAge: "30s", fallthrough: false }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, adminConfigured: adminAuth.isConfigured() });
+});
+
+app.post("/api/admin/login", (req, res) => adminAuth.login(req, res));
+app.get("/api/admin/session", (req, res) => adminAuth.session(req, res));
+app.post("/api/admin/logout", adminAuth.requireSession, adminAuth.requireCsrf, (req, res) => adminAuth.logout(req, res));
+app.get("/api/admin/overview", adminAuth.requireSession, async (_req, res, next) => {
+  try {
+    const all = await characters.list();
+    const missingSprites = (await Promise.all(all.map(async (character) => {
+      try {
+        await fs.access(path.join(config.charactersDir, character.id, "sprite.png"));
+        return null;
+      } catch {
+        return character.id;
+      }
+    }))).filter(Boolean);
+    res.json({
+      ok: true,
+      characters: all,
+      diagnostics: {
+        characterCount: all.length,
+        enabledCount: all.filter((character) => character.enabled).length,
+        missingSprites,
+        processing: queue.status()
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/characters", async (_req, res, next) => {
@@ -73,13 +104,14 @@ app.get("/api/characters/:id", async (req, res, next) => {
   }
 });
 
-app.patch("/api/characters/:id", async (req, res, next) => {
+app.patch("/api/characters/:id", adminAuth.requireSession, adminAuth.requireCsrf, async (req, res, next) => {
   try {
+    const characterId = String(req.params.id);
     if (typeof req.body.enabled !== "boolean") {
       res.status(400).json({ message: "enabled must be a boolean" });
       return;
     }
-    const result = await characters.setEnabled(req.params.id, req.body.enabled);
+    const result = await characters.setEnabled(characterId, req.body.enabled);
     if (result.status === "not-found") {
       res.status(404).json({ message: "character not found" });
       return;
@@ -121,13 +153,14 @@ app.post("/api/photos", upload.single("photo"), async (req, res, next) => {
   }
 });
 
-app.get("/api/processing", (_req, res) => {
+app.get("/api/processing", adminAuth.requireSession, (_req, res) => {
   res.json({ items: queue.status() });
 });
 
-app.delete("/api/characters/:id", async (req, res, next) => {
+app.delete("/api/characters/:id", adminAuth.requireSession, adminAuth.requireCsrf, async (req, res, next) => {
   try {
-    const result = await characters.remove(req.params.id);
+    const characterId = String(req.params.id);
+    const result = await characters.remove(characterId);
     if (result.status === "not-found") {
       res.status(404).json({ message: "character not found" });
       return;
@@ -138,7 +171,7 @@ app.delete("/api/characters/:id", async (req, res, next) => {
     }
     sockets.broadcast({
       type: "character.deleted",
-      payload: { characterId: req.params.id, updatedAt: new Date().toISOString() }
+      payload: { characterId, updatedAt: new Date().toISOString() }
     });
     res.status(204).end();
   } catch (error) {
@@ -146,7 +179,7 @@ app.delete("/api/characters/:id", async (req, res, next) => {
   }
 });
 
-app.post("/api/characters/rebuild", async (_req, res) => {
+app.post("/api/characters/rebuild", adminAuth.requireSession, adminAuth.requireCsrf, async (_req, res) => {
   res.status(202).json({ status: "not-needed", message: "manifest is updated as each character completes" });
 });
 

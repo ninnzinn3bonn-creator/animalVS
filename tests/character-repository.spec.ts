@@ -65,7 +65,7 @@ describe("CharacterRepository Pages fallback", () => {
     expect(reloaded.getAll().find((item) => item.id === "two")?.enabled).toBe(false);
   });
 
-  it("deletes a character remotely and keeps it hidden during static fallback", async () => {
+  it("keeps a player deletion local and hidden during static fallback", async () => {
     const values = new Map<string, string>();
     const storage = {
       getItem: (key: string) => values.get(key) ?? null,
@@ -85,7 +85,7 @@ describe("CharacterRepository Pages fallback", () => {
 
     await repository.remove("two");
     expect(repository.getAll().map((item) => item.id)).toEqual(["one"]);
-    expect(fetcher).toHaveBeenCalledWith("https://api.example.test/api/characters/two", { method: "DELETE" });
+    expect(fetcher).not.toHaveBeenCalledWith("https://api.example.test/api/characters/two", { method: "DELETE" });
 
     online = false;
     const reloaded = new CharacterRepository(fetcher, storage, endpoints);
@@ -126,7 +126,7 @@ describe("CharacterRepository Pages fallback", () => {
     expect(repository.getAll().find((item) => item.id === "two")?.enabled).toBe(false);
   });
 
-  it("keeps a successful online enable change after reloading", async () => {
+  it("keeps a player enable change locally after reloading", async () => {
     const values = new Map<string, string>([
       ["human-stack-battle.character-enabled", JSON.stringify({ one: true, two: false })]
     ]);
@@ -145,6 +145,10 @@ describe("CharacterRepository Pages fallback", () => {
     await repository.load();
 
     await repository.setEnabled("two", true);
+    expect(fetcher).not.toHaveBeenCalledWith(
+      "https://api.example.test/api/characters/two",
+      expect.objectContaining({ method: "PATCH" })
+    );
 
     const reloaded = new CharacterRepository(fetcher, storage, endpoints);
     await reloaded.load();

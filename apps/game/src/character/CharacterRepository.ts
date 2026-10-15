@@ -46,34 +46,6 @@ export class CharacterRepository {
   }
 
   async setEnabled(id: string, enabled: boolean): Promise<CharacterDefinition> {
-    if (this.remoteAvailable) {
-      try {
-        const response = await this.fetcher(this.endpoints.apiUrl(`/api/characters/${encodeURIComponent(id)}`), {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ enabled })
-        });
-        if (!response.ok) {
-          if (response.status === 409) {
-            throw new Error("少なくとも1人のキャラクターを有効にしてください");
-          }
-          throw new Error(`キャラクター設定の更新に失敗しました: ${response.status}`);
-        }
-        const updated = this.normalize([(await response.json()) as CharacterDefinition], true)[0];
-        if (!updated) {
-          throw new Error("キャラクター設定の更新結果が不正です");
-        }
-        this.characters = this.characters.map((character) => (character.id === id ? updated : character));
-        this.saveLocalPreferences();
-        return updated;
-      } catch (error) {
-        if (error instanceof Error && error.message === "少なくとも1人のキャラクターを有効にしてください") {
-          throw error;
-        }
-        this.remoteAvailable = false;
-      }
-    }
-
     const current = this.characters.find((character) => character.id === id);
     if (!current) {
       throw new Error("キャラクターが見つかりません");
@@ -98,26 +70,6 @@ export class CharacterRepository {
     }
     if (current.enabled && this.characters.filter((character) => character.enabled).length <= 1) {
       throw new Error("削除する前に別のキャラクターを有効にしてください");
-    }
-
-    if (this.remoteAvailable) {
-      try {
-        const response = await this.fetcher(this.endpoints.apiUrl(`/api/characters/${encodeURIComponent(id)}`), {
-          method: "DELETE"
-        });
-        if (response.status === 409) {
-          throw new Error("削除する前に別のキャラクターを有効にしてください");
-        }
-        if (!response.ok && response.status !== 404 && response.status !== 403) {
-          throw new Error(`キャラクターの削除に失敗しました: ${response.status}`);
-        }
-        if (response.status === 403) this.remoteAvailable = false;
-      } catch (error) {
-        if (error instanceof Error && !isNetworkError(error)) {
-          throw error;
-        }
-        this.remoteAvailable = false;
-      }
     }
 
     this.characters = this.characters.filter((character) => character.id !== id);
@@ -225,10 +177,6 @@ function mergeById(primary: CharacterDefinition[], secondary: CharacterDefinitio
   const merged = new Map(primary.map((character) => [character.id, character]));
   for (const character of secondary) merged.set(character.id, character);
   return [...merged.values()];
-}
-
-function isNetworkError(error: Error): boolean {
-  return error instanceof TypeError || error.name === "AbortError";
 }
 
 function getBrowserStorage(): PreferenceStorage | null {

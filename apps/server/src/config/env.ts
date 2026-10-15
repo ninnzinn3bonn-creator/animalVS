@@ -15,6 +15,8 @@ export interface ServerConfig {
   pythonWorkerUrl: string;
   saveOriginals: boolean;
   maxUploadMb: number;
+  adminId: string;
+  adminPassword: string;
 }
 
 function readBoolean(value: string | undefined, fallback: boolean): boolean {
@@ -44,6 +46,8 @@ export function loadConfig(): ServerConfig {
     manifestPath: path.join(runtimeDir, "manifest.json"),
     pythonWorkerUrl: process.env.PYTHON_WORKER_URL ?? "http://127.0.0.1:8788",
     saveOriginals: readBoolean(process.env.SAVE_ORIGINALS, true),
-    maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 12)
+    maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 12),
+    adminId: process.env.ADMIN_ID ?? "",
+    adminPassword: process.env.ADMIN_PASSWORD ?? ""
   };
 }

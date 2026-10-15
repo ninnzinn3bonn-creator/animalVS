@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "node:path";
 
 export default defineConfig({
   root: "apps/game",
@@ -16,6 +17,12 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        game: resolve(__dirname, "index.html"),
+        admin: resolve(__dirname, "admin/index.html")
+      }
+    }
   }
 });

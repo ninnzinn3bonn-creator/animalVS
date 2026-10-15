@@ -91,16 +91,26 @@ if (Test-Path $processFile) {
 
 if (-not $tunnelPid) {
   $encryptedToken = (Get-Content -Raw $tokenFile).Trim()
-  $secureToken = $encryptedToken | ConvertTo-SecureString
-  $tokenPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
+  if ($encryptedToken -notmatch '^[0-9a-fA-F]+$' -or $encryptedToken.Length % 2 -ne 0) {
+    throw "Encrypted tunnel token has an invalid DPAPI format."
+  }
   try {
-    $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($tokenPointer)
+    Add-Type -AssemblyName System.Security
+    $encryptedBytes = [byte[]]::new($encryptedToken.Length / 2)
+    for ($index = 0; $index -lt $encryptedBytes.Length; $index++) {
+      $encryptedBytes[$index] = [Convert]::ToByte($encryptedToken.Substring($index * 2, 2), 16)
+    }
+    $plainBytes = [Security.Cryptography.ProtectedData]::Unprotect(
+      $encryptedBytes,
+      $null,
+      [Security.Cryptography.DataProtectionScope]::CurrentUser
+    )
+    $plainToken = [Text.Encoding]::Unicode.GetString($plainBytes)
     $temporaryTokenFile = Join-Path $runtime "capture-tunnel-token.tmp"
     Set-Content -LiteralPath $temporaryTokenFile -Value $plainToken -NoNewline -Encoding ascii
   } finally {
-    if ($tokenPointer -ne [IntPtr]::Zero) {
-      [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($tokenPointer)
-    }
+    if ($plainBytes) { [Array]::Clear($plainBytes, 0, $plainBytes.Length) }
+    if ($encryptedBytes) { [Array]::Clear($encryptedBytes, 0, $encryptedBytes.Length) }
     $plainToken = $null
   }
 

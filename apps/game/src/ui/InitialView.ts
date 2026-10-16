@@ -1,4 +1,4 @@
-export const appViews = ["title", "game", "versus", "capture", "characters", "ranking"] as const;
+export const appViews = ["title", "start", "game", "versus", "capture", "characters", "ranking"] as const;
 
 export type AppView = (typeof appViews)[number];
 

@@ -23,11 +23,21 @@ import {
 import type { GameMusic } from "../audio/GameMusic";
 import type { CharacterDefinition } from "../character/CharacterTypes";
 import { CaptureCooldown } from "../capture/CaptureCooldown";
+import { captureFrameSize } from "../capture/CaptureFrame";
 import { serviceEndpoints } from "../config/services";
 import { loadLeaderboard, recordLeaderboardEntry, syncLeaderboard, type LeaderboardEntry } from "../game/Leaderboard";
 import type { GameController, GameHud, ResultReason } from "../game/GameController";
 import type { VersusMode } from "../versus/VersusMode";
 import { initialViewFromSearch } from "./InitialView";
+import { GamepadUiNavigator } from "./GamepadUiNavigator";
+
+type CaptureMode = "standalone" | "solo" | "versus";
+interface CaptureSession {
+  mode: CaptureMode;
+  player: 1 | 2;
+  characterIds: Partial<Record<1 | 2, string>>;
+  skipped: Partial<Record<1 | 2, boolean>>;
+}
 
 export class AppUi implements GameHud {
   private root!: HTMLElement;
@@ -39,7 +49,8 @@ export class AppUi implements GameHud {
   private rosterEl!: HTMLElement;
   private toastEl!: HTMLElement;
   private videoEl!: HTMLVideoElement;
-  private nameInput!: HTMLInputElement;
+  private captureHeadingEl!: HTMLElement;
+  private captureFlashEl!: HTMLElement;
   private startOverlayEl!: HTMLElement;
   private startButtonEl!: HTMLButtonElement;
   private rankingPanelEl!: HTMLElement;
@@ -81,6 +92,8 @@ export class AppUi implements GameHud {
   private currentView = "title";
   private soloMode: "idle" | "playing" | "paused" | "result" = "idle";
   private rosterSignature = "";
+  private captureSession: CaptureSession = { mode: "standalone", player: 1, characterIds: {}, skipped: {} };
+  private gamepadNavigator: GamepadUiNavigator | null = null;
 
   constructor(private readonly music: GameMusic) {}
 
@@ -134,20 +147,17 @@ export class AppUi implements GameHud {
             <div class="start-choice-heading">
               <span class="start-choice-logo-backdrop" aria-hidden="true"></span>
               <img src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
-              <h2>なにをする？</h2>
+              <h2>遊び方</h2>
             </div>
+            <p class="start-howto">好きなポーズで写真を撮ると、撮影した人がゲームに登場します。1人でも2人でも遊べます。</p>
             <div class="start-choice-actions" aria-label="遊び方を選択">
-              <button class="capture-choice" type="button" data-view="capture">
-                <i data-lucide="camera"></i>
-                <span><strong>キャラをつくる</strong><small>写真を撮ってゲームに追加</small></span>
-              </button>
-              <button type="button" data-view="game">
+              <button type="button" data-mode-choice="solo">
                 <i data-lucide="gamepad-2"></i>
-                <span><strong>1人で遊ぶ</strong><small>高さに挑戦</small></span>
+                <span><strong>1人で遊ぶ</strong><small>写真撮影からスタート</small></span>
               </button>
-              <button type="button" data-view="versus">
+              <button type="button" data-mode-choice="versus">
                 <i data-lucide="swords"></i>
-                <span><strong>2人で対戦</strong><small>同じ画面でバトル</small></span>
+                <span><strong>2人で対戦</strong><small>2人を順番に撮影</small></span>
               </button>
             </div>
           </div>
@@ -202,6 +212,7 @@ export class AppUi implements GameHud {
 
         <section class="view" id="view-capture">
           <div class="capture-grid">
+            <h2 id="capture-heading" class="capture-heading">キャラ撮影</h2>
             <div class="camera-box">
               <video id="camera-preview" autoplay playsinline muted></video>
               <div class="body-guide" aria-hidden="true"><span></span></div>
@@ -224,23 +235,20 @@ export class AppUi implements GameHud {
               </button>
               <div class="camera-actions">
                 <button type="button" data-action="camera-start"><i data-lucide="video"></i><span>カメラを起動</span></button>
-                <button class="primary-action" type="button" data-action="camera-shot"><i data-lucide="camera"></i><span>撮影して登録</span></button>
+                <button class="primary-action" type="button" data-action="camera-shot"><i data-lucide="camera"></i><span>撮影する</span></button>
               </div>
             </div>
             <form class="capture-form">
-              <label>キャラクター名
-                <input id="participant-name" maxlength="60" placeholder="例：たにぐち" required />
-              </label>
               <p id="capture-status" class="capture-status" role="status" aria-live="polite">
-                名前を入力し、全身がガイド内に入るように立ってください。
+                全身がガイド内に入るように立ってください。
               </p>
               <ol class="capture-steps" aria-label="キャラクター作成手順">
                 <li class="active">ポーズ</li><li>撮影確認</li><li>切り抜き</li><li>ゲームへ追加</li>
               </ol>
               <div id="capture-offline-actions" class="capture-offline-actions" hidden>
                 <button type="button" data-action="capture-retry"><i data-lucide="refresh-ccw"></i><span>接続を再確認</span></button>
-                <button type="button" data-view="start"><i data-lucide="chevron-left"></i><span>遊び方を選ぶ</span></button>
               </div>
+              <button class="capture-skip" type="button" data-action="capture-skip"><i data-lucide="chevron-right"></i><span>撮影をスキップ</span></button>
               <div id="capture-complete" class="capture-complete" hidden>
                 <strong>キャラクターができました！</strong>
                 <div>
@@ -280,6 +288,7 @@ export class AppUi implements GameHud {
         </dialog>
 
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="capture-flash" class="capture-flash" aria-hidden="true"></div>
       </main>`;
 
     root.querySelector(".stage")?.append(canvas);
@@ -291,7 +300,8 @@ export class AppUi implements GameHud {
     this.rosterEl = this.byId("roster");
     this.toastEl = this.byId("toast");
     this.videoEl = this.byId("camera-preview") as HTMLVideoElement;
-    this.nameInput = this.byId("participant-name") as HTMLInputElement;
+    this.captureHeadingEl = this.byId("capture-heading");
+    this.captureFlashEl = this.byId("capture-flash");
     this.startOverlayEl = this.byId("start-overlay");
     this.startButtonEl = root.querySelector<HTMLButtonElement>("[data-action='start']")!;
     this.rankingPanelEl = this.byId("result-ranking");
@@ -321,6 +331,12 @@ export class AppUi implements GameHud {
     this.setCaptureAvailability(false);
     this.renderIcons();
     this.bindEvents();
+    this.gamepadNavigator = new GamepadUiNavigator(
+      root,
+      () => (this.currentView === "game" && this.soloMode === "playing") || (this.currentView === "versus" && Boolean(this.versusMode?.isGameplayActive())),
+      () => this.navigateBack()
+    );
+    this.gamepadNavigator.connect();
     const initialView = initialViewFromSearch(window.location.search);
     if (initialView !== "title") {
       this.switchView(initialView);
@@ -348,7 +364,6 @@ export class AppUi implements GameHud {
     this.captureAvailable = available;
     this.cameraStartButtonEl.disabled = !available;
     this.cameraSwitchButtonEl.disabled = !available;
-    this.nameInput.disabled = !available;
     this.captureOfflineActionsEl.hidden = available;
     this.updateCaptureButton();
     if (!available) {
@@ -444,8 +459,15 @@ export class AppUi implements GameHud {
       const target = event.target as HTMLElement;
       const tab = target.closest<HTMLButtonElement>("[data-view]");
       if (tab) {
-        this.switchView(tab.dataset.view ?? "game");
+        const view = tab.dataset.view ?? "game";
+        if (view === "capture") this.beginCaptureSession("standalone");
+        else this.switchView(view);
         this.closeMenu();
+        return;
+      }
+      const modeChoice = target.closest<HTMLButtonElement>("[data-mode-choice]")?.dataset.modeChoice;
+      if (modeChoice === "solo" || modeChoice === "versus") {
+        this.beginCaptureSession(modeChoice);
         return;
       }
       const action = target.closest<HTMLButtonElement>("[data-action]")?.dataset.action;
@@ -525,6 +547,7 @@ export class AppUi implements GameHud {
       if (action === "camera-shot") void this.capture();
       if (action === "camera-retake") this.clearCaptureReview();
       if (action === "camera-register") void this.submitCapture();
+      if (action === "capture-skip") this.completeCaptureStep(null, true);
       if (action === "capture-retry") void this.retryCaptureConnection();
     });
     this.root.addEventListener("change", (event) => {
@@ -560,7 +583,69 @@ export class AppUi implements GameHud {
       .forEach((el) => el.classList.toggle("active", el.getAttribute("data-view") === view));
     if (view !== "capture") {
       this.stopCamera();
+    } else if (this.captureAvailable) {
+      void this.startCamera().catch(() =>
+        this.setCaptureStatus("error", "カメラを起動できませんでした。撮影をスキップしてゲームへ進めます。")
+      );
     }
+  }
+
+  private beginCaptureSession(mode: CaptureMode): void {
+    this.captureSession = { mode, player: 1, characterIds: {}, skipped: {} };
+    this.prepareCaptureStep();
+    this.switchView("capture");
+  }
+
+  private prepareCaptureStep(): void {
+    this.clearCaptureReview();
+    this.captureCompleteEl.hidden = true;
+    this.captureHeadingEl.textContent =
+      this.captureSession.mode === "versus"
+        ? `Player ${this.captureSession.player} のキャラ撮影`
+        : this.captureSession.mode === "solo"
+          ? "1人用キャラ撮影"
+          : "キャラ撮影";
+    this.setCaptureStatus(
+      "info",
+      this.captureAvailable
+        ? "好きなポーズで全身を写してください。撮影はスキップできます。"
+        : "画像処理は現在停止中です。撮影をスキップしてゲームへ進めます。"
+    );
+  }
+
+  private completeCaptureStep(characterId: string | null, skipped = false): void {
+    const { mode, player } = this.captureSession;
+    if (characterId) this.captureSession.characterIds[player] = characterId;
+    if (skipped) this.captureSession.skipped[player] = true;
+    if (mode === "solo") {
+      this.controller?.setInitialCharacter(characterId);
+      this.controller?.restart();
+      this.switchView("game");
+      return;
+    }
+    if (mode === "versus" && player === 1) {
+      this.captureSession.player = 2;
+      this.prepareCaptureStep();
+      if (this.captureAvailable) void this.startCamera().catch(() => undefined);
+      return;
+    }
+    if (mode === "versus") {
+      this.versusMode?.setInitialCharacters(this.captureSession.characterIds);
+      this.versusMode?.returnToPreparation();
+      this.switchView("versus");
+      return;
+    }
+    this.characterCreated();
+  }
+
+  private navigateBack(): void {
+    if (!this.menuEl.hidden) {
+      this.closeMenu();
+      return;
+    }
+    if (this.currentView === "start") this.switchView("title");
+    else if (this.currentView === "capture") this.switchView("start");
+    else if (this.currentView !== "title") this.switchView("start");
   }
 
   private toggleMenu(): void {
@@ -784,10 +869,11 @@ export class AppUi implements GameHud {
     this.updateCaptureButton();
     this.setCaptureStep(2);
     this.setCaptureStatus("processing", "写真を送信しています。キャラクターの作成完了まで10秒ほどお待ちください。");
-    const name = this.nameInput.value.trim() || `キャラクター-${Date.now()}`;
+    const name = this.captureCharacterName();
     try {
-      await this.submitLocalCapture(name);
+      const characterId = await this.submitLocalCapture(name);
       this.startCaptureCooldown();
+      this.completeCaptureStep(characterId);
     } catch (error) {
       this.setCaptureStatus("error", error instanceof Error ? error.message : "キャラクターを作成できませんでした。");
       this.notify("キャラクターを作成できませんでした");
@@ -797,7 +883,7 @@ export class AppUi implements GameHud {
     }
   }
 
-  private async submitLocalCapture(name: string): Promise<void> {
+  private async submitLocalCapture(name: string): Promise<string> {
     const existingIds = await this.loadRemoteCharacterIds();
     const form = new FormData();
     form.append("name", name);
@@ -806,9 +892,10 @@ export class AppUi implements GameHud {
     if (!response.ok) throw new Error(`写真の送信に失敗しました: ${response.status}`);
     this.setCaptureStatus("processing", "写真を受け付けました。作成完了まで10秒ほどお待ちください。");
     this.notify("写真を受け付けました。作成完了まで10秒ほどお待ちください");
-    await this.waitForLocalCharacter(existingIds);
+    const characterId = await this.waitForLocalCharacter(existingIds);
     await this.characterRefreshHandler?.();
     this.characterCreated();
+    return characterId;
   }
 
   private async loadRemoteCharacterIds(): Promise<Set<string>> {
@@ -822,12 +909,13 @@ export class AppUi implements GameHud {
     }
   }
 
-  private async waitForLocalCharacter(existingIds: Set<string>): Promise<void> {
+  private async waitForLocalCharacter(existingIds: Set<string>): Promise<string> {
     const startedAt = Date.now();
     while (Date.now() - startedAt < 120_000) {
       await new Promise((resolve) => window.setTimeout(resolve, 1000));
       const ids = await this.loadRemoteCharacterIds();
-      if ([...ids].some((id) => !existingIds.has(id))) return;
+      const createdId = [...ids].find((id) => !existingIds.has(id));
+      if (createdId) return createdId;
       this.setCaptureStatus("processing", "人物を切り抜き、当たり判定を作成しています。そのままお待ちください。");
     }
     throw new Error("処理に時間がかかっています。しばらくしてキャラクター一覧を確認してください");
@@ -839,8 +927,10 @@ export class AppUi implements GameHud {
       this.captureCountdownEl.classList.add("show");
       await new Promise((resolve) => window.setTimeout(resolve, 700));
     }
-    this.captureCountdownEl.textContent = "撮影！";
+    this.captureCountdownEl.textContent = "パシャリ";
+    this.captureFlashEl.classList.add("show");
     await new Promise((resolve) => window.setTimeout(resolve, 220));
+    this.captureFlashEl.classList.remove("show");
     this.captureCountdownEl.classList.remove("show");
     this.captureCountdownEl.textContent = "";
   }
@@ -913,7 +1003,7 @@ export class AppUi implements GameHud {
         ? "送信中"
         : cooldownSeconds > 0
           ? `再撮影まで${cooldownSeconds}秒`
-          : "撮影して登録";
+          : "撮影する";
     }
   }
 
@@ -923,8 +1013,10 @@ export class AppUi implements GameHud {
   }
 
   private drawPortraitFrame(canvas: HTMLCanvasElement, sourceWidth: number, sourceHeight: number): void {
-    canvas.width = 675;
-    canvas.height = 1200;
+    const desktop = window.matchMedia("(min-width: 681px)").matches;
+    const size = captureFrameSize(sourceWidth, sourceHeight, desktop);
+    canvas.width = size.width;
+    canvas.height = size.height;
     const context = canvas.getContext("2d");
     if (!context) {
       throw new Error("撮影画像を作成できませんでした");
@@ -948,6 +1040,13 @@ export class AppUi implements GameHud {
       drawWidth,
       drawHeight
     );
+  }
+
+  private captureCharacterName(): string {
+    const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+    if (this.captureSession.mode === "versus") return `Player-${this.captureSession.player}-${timestamp}`;
+    if (this.captureSession.mode === "solo") return `プレイヤー-${timestamp}`;
+    return `キャラクター-${timestamp}`;
   }
 
   private waitForVideoFrame(): Promise<void> {

@@ -16,6 +16,7 @@ import {
   VERSUS_ATTACK_SCALE,
   VERSUS_CHARACTER_FRICTION,
   VERSUS_CHARACTER_FRICTION_STATIC,
+  VERSUS_CHARACTER_SCALE,
   VERSUS_DROP_INITIAL_VELOCITY_SCALE,
   VERSUS_DROP_INITIAL_VELOCITY_Y,
   VERSUS_LIVES,
@@ -173,6 +174,27 @@ describe("versus game sessions", () => {
     expect(versus.added[0].frictionStatic).toBeCloseTo(physicsConfig.frictionStatic * 1.5);
     expect(solo.added[0].friction).toBeCloseTo(physicsConfig.friction);
     expect(solo.added[0].frictionStatic).toBeCloseTo(physicsConfig.frictionStatic);
+  });
+
+  it("can force the captured character as the first character without changing later random picks", () => {
+    const captured = { ...demoCharacters[1], enabled: true };
+    const session = createSession(0, 0, { initialCharacterId: captured.id });
+    const repository = (session.controller as unknown as { repository: CharacterRepository }).repository;
+    vi.spyOn(repository, "getAll").mockReturnValue([demoCharacters[0], captured]);
+    session.controller.start();
+
+    expect((session.added[0].plugin as { definitionId?: string }).definitionId).toBe(captured.id);
+  });
+
+  it("keeps versus character enlargement in a named parameter", () => {
+    expect(VERSUS_CHARACTER_SCALE).toBe(1.15);
+    const versus = createSession(0, 0, { characterScale: VERSUS_CHARACTER_SCALE });
+    const solo = createSession();
+    versus.controller.start();
+    solo.controller.start();
+    const versusWidth = versus.added[0].bounds.max.x - versus.added[0].bounds.min.x;
+    const soloWidth = solo.added[0].bounds.max.x - solo.added[0].bounds.min.x;
+    expect(versusWidth).toBeCloseTo(soloWidth * VERSUS_CHARACTER_SCALE);
   });
 
   it("uses the requested giant attack notices", () => {

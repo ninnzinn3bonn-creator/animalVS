@@ -71,9 +71,15 @@ button:active {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid rgba(0, 122, 255, 0.3);
   outline-offset: 2px;
+}
+
+button:focus-visible,
+select:focus-visible {
+  transform: scale(1.025);
 }
 
 button:disabled {
@@ -235,7 +241,7 @@ h1 {
   display: grid;
   width: min(100vw, calc(100dvh * 390 / 680), 480px);
   height: 100dvh;
-  grid-template-rows: minmax(190px, 42%) 1fr;
+  grid-template-rows: minmax(160px, 34%) auto 1fr;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 20px;
@@ -246,6 +252,19 @@ h1 {
   background-position: left center;
   background-size: cover;
   box-shadow: var(--shadow-soft), 0 0 0 1px rgba(60, 60, 67, 0.08);
+}
+
+.start-howto {
+  z-index: 1;
+  margin: 0 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.65;
+  text-align: center;
+  backdrop-filter: blur(14px);
 }
 
 .start-choice-back {
@@ -1076,19 +1095,19 @@ canvas {
 }
 
 .versus-arena {
-  --versus-board-width: min(calc((100vw - 18px) / 2), calc((100dvh - 68px) * 640 / 680));
+  --versus-board-width: min(calc((100vw - 4px) / 2), calc((100dvh - 4px) * 640 / 680));
   position: relative;
   display: grid;
   min-height: 100dvh;
   align-content: end;
   justify-content: center;
-  padding: 62px 6px 6px;
+  padding: 2px;
   overflow: hidden;
 }
 
 .versus-common-clock {
   position: absolute;
-  top: max(9px, env(safe-area-inset-top));
+  top: max(4px, env(safe-area-inset-top));
   left: 50%;
   z-index: 8;
   display: grid;
@@ -1126,7 +1145,7 @@ canvas {
 .versus-boards {
   display: grid;
   grid-template-columns: repeat(2, var(--versus-board-width));
-  gap: 6px;
+  gap: 2px;
 }
 
 .versus-player-board {
@@ -1548,6 +1567,94 @@ canvas {
   gap: 38px;
   margin: 0 auto;
   padding: 26px 22px 38px;
+}
+
+.capture-heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 24px;
+  text-align: center;
+}
+
+.capture-skip {
+  min-height: 50px;
+}
+
+.capture-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.capture-flash.show {
+  opacity: 1;
+}
+
+@media (min-width: 681px) {
+  .title-screen,
+  .start-choice-screen {
+    width: 100vw;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .start-choice-screen {
+    grid-template-rows: minmax(150px, 30dvh) auto 1fr;
+  }
+
+  .start-choice-heading img {
+    width: min(72vw, 850px);
+  }
+
+  .start-howto {
+    width: min(800px, calc(100vw - 48px));
+    justify-self: center;
+    padding: 18px 28px;
+    font-size: clamp(20px, 2.2vw, 30px);
+  }
+
+  .start-choice-actions {
+    width: min(820px, calc(100vw - 48px));
+    grid-template-columns: 1fr 1fr;
+    justify-self: center;
+    padding-top: 22px;
+  }
+
+  .start-choice-actions button {
+    min-height: 108px;
+  }
+
+  #view-capture.active {
+    display: grid;
+    min-height: 100dvh;
+    align-items: center;
+  }
+
+  .capture-grid {
+    width: 100%;
+    grid-template-columns: minmax(600px, 1fr) minmax(280px, 360px);
+    gap: 22px;
+    padding: 16px 28px;
+  }
+
+  .camera-box {
+    width: min(100%, calc((100dvh - 110px) * 16 / 9));
+    aspect-ratio: 16 / 9;
+    border-radius: 18px;
+  }
+
+  video {
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+  }
+
+  .capture-review {
+    border-radius: 14px;
+  }
 }
 
 .camera-box {
@@ -2190,6 +2297,23 @@ input::placeholder {
 
   .controls button {
     min-height: 44px;
+  }
+}
+
+@media (min-width: 681px) {
+  .camera-box {
+    width: min(100%, calc((100dvh - 110px) * 16 / 9));
+    aspect-ratio: 16 / 9;
+    border-radius: 18px;
+  }
+
+  .camera-box video {
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+  }
+
+  .capture-review {
+    border-radius: 14px;
   }
 }
 

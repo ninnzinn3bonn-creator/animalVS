@@ -77,14 +77,14 @@ describe("bowl platform", () => {
     expect(platform.parts.length).toBe(13);
   });
 
-  it("uses a platform exactly 1.5 times wider in the versus world", () => {
+  it("uses the requested additional 15 percent platform width in the versus world", () => {
     const soloWidth = platformWidth(390);
     const versusPlatform = createPlatform(VERSUS_WORLD_WIDTH, VERSUS_WORLD_HEIGHT, {
       width: VERSUS_PLATFORM_WIDTH
     });
 
-    expect(VERSUS_PLATFORM_WIDTH).toBeCloseTo(soloWidth * 1.5);
-    expect(versusPlatform.bounds.max.x - versusPlatform.bounds.min.x).toBeCloseTo(soloWidth * 1.5);
+    expect(VERSUS_PLATFORM_WIDTH).toBeCloseTo(soloWidth * 1.5 * 1.15);
+    expect(versusPlatform.bounds.max.x - versusPlatform.bounds.min.x).toBeCloseTo(soloWidth * 1.5 * 1.15);
     expect((versusPlatform.bounds.min.x + versusPlatform.bounds.max.x) / 2).toBeCloseTo(VERSUS_WORLD_WIDTH / 2);
   });
 

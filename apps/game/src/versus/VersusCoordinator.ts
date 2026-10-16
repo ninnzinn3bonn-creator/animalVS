@@ -13,6 +13,7 @@ import {
   VERSUS_ATTACK_SCALE,
   VERSUS_CHARACTER_FRICTION,
   VERSUS_CHARACTER_FRICTION_STATIC,
+  VERSUS_CHARACTER_SCALE,
   VERSUS_DROP_INITIAL_VELOCITY_Y,
   VERSUS_GRAVITY_Y,
   VERSUS_LIVES,
@@ -100,6 +101,7 @@ export class VersusCoordinator {
         dropInitialVelocityY: VERSUS_DROP_INITIAL_VELOCITY_Y,
         characterFriction: VERSUS_CHARACTER_FRICTION,
         characterFrictionStatic: VERSUS_CHARACTER_FRICTION_STATIC,
+        characterScale: VERSUS_CHARACTER_SCALE,
         dropLimit: VERSUS_LIVES,
         onRemainingLivesChanged: (remainingLives) => this.events.livesChanged(player, remainingLives),
         onCharacterSettled: (settledCharacters) => this.handleCharacterSettled(player, settledCharacters),
@@ -206,6 +208,11 @@ export class VersusCoordinator {
 
   connectedGamepads(): ConnectedGamepad[] {
     return this.input.connectedGamepads();
+  }
+
+  setInitialCharacters(ids: Partial<Record<PlayerId, string>>): void {
+    this.controllers[1].setInitialCharacter(ids[1] ?? null);
+    this.controllers[2].setInitialCharacter(ids[2] ?? null);
   }
 
   dispose(): void {

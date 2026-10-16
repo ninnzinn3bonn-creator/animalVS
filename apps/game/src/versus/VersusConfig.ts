@@ -3,7 +3,9 @@ import { platformThickness, platformWidth } from "../game/PhysicsWorld";
 
 export const VERSUS_WORLD_WIDTH = 640;
 export const VERSUS_WORLD_HEIGHT = 680;
-export const VERSUS_PLATFORM_WIDTH = platformWidth(390) * 1.5;
+export const VERSUS_PLATFORM_WIDTH_SCALE = 1.15;
+export const VERSUS_PLATFORM_WIDTH = platformWidth(390) * 1.5 * VERSUS_PLATFORM_WIDTH_SCALE;
+export const VERSUS_CHARACTER_SCALE = 1.15;
 export const VERSUS_PLATFORM_CONTROL_OVERHANG = 16;
 export const VERSUS_GRAVITY_SCALE = 0.5;
 export const VERSUS_GRAVITY_Y = physicsConfig.gravityY * VERSUS_GRAVITY_SCALE;

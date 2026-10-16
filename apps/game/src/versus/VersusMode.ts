@@ -180,6 +180,14 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.coordinator.refreshCharacters();
   }
 
+  setInitialCharacters(ids: Partial<Record<PlayerId, string>>): void {
+    this.coordinator.setInitialCharacters(ids);
+  }
+
+  isGameplayActive(): boolean {
+    return ["countdown", "playing", "measuring", "overtime"].includes(this.currentPhase);
+  }
+
   returnToPreparation(): void {
     this.coordinator.returnToSetup();
   }

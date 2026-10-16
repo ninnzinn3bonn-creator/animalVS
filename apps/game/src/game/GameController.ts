@@ -30,6 +30,8 @@ export interface GameControllerOptions {
   characterFrictionStatic?: number;
   dropLimit?: number;
   onRemainingLivesChanged?: (remainingLives: number) => void;
+  initialCharacterId?: string | null;
+  characterScale?: number;
 }
 
 export interface GameHud {
@@ -81,6 +83,9 @@ export class GameController {
   private pausedTurnRemainingMs: number | null = null;
   private turnCountdown: number | null = null;
   private pendingCharacterScale = 1;
+  private configuredInitialCharacterId: string | null;
+  private pendingInitialCharacterId: string | null;
+  private readonly characterScale: number;
   private readonly keyHandler = (event: KeyboardEvent) => this.handleKey(event);
 
   constructor(
@@ -100,6 +105,9 @@ export class GameController {
     this.characterFrictionStatic = options.characterFrictionStatic ?? physicsConfig.frictionStatic;
     this.dropLimit = Math.max(1, Math.floor(options.dropLimit ?? 1));
     this.onRemainingLivesChanged = options.onRemainingLivesChanged;
+    this.configuredInitialCharacterId = options.initialCharacterId ?? null;
+    this.pendingInitialCharacterId = this.configuredInitialCharacterId;
+    this.characterScale = Math.max(0.1, options.characterScale ?? 1);
     this.loseDetector = new LoseDetector(world.loseSensor);
     this.loseDetector.attach(this.world.engine, (_player, character) => this.handleDroppedCharacter(character));
     if (this.keyboardEnabled) {
@@ -249,6 +257,11 @@ export class GameController {
     return "next";
   }
 
+  setInitialCharacter(id: string | null): void {
+    this.configuredInitialCharacterId = id;
+    this.pendingInitialCharacterId = id;
+  }
+
   move(direction: -1 | 1): void {
     if (!this.canControlActiveBody() || !this.activeBody) {
       return;
@@ -299,6 +312,7 @@ export class GameController {
     this.activeBody = null;
     this.activeCharacter = null;
     this.pendingCharacterScale = 1;
+    this.pendingInitialCharacterId = this.configuredInitialCharacterId;
     this.failedDrops = 0;
     this.handledDroppedBodies.clear();
     this.loseDetector.reset();
@@ -353,13 +367,17 @@ export class GameController {
     if (this.state !== "playing" && this.state !== "idle") {
       return;
     }
-    this.activeCharacter = this.repository.random();
+    const initialCharacter = this.pendingInitialCharacterId
+      ? this.repository.getAll().find((character) => character.id === this.pendingInitialCharacterId && character.enabled)
+      : undefined;
+    this.pendingInitialCharacterId = null;
+    this.activeCharacter = initialCharacter ?? this.repository.random();
     const created = this.factory.create(
       this.activeCharacter,
       this.world.width / 2,
       physicsConfig.spawnY,
       this.world.width,
-      this.pendingCharacterScale,
+      this.characterScale * this.pendingCharacterScale,
       {
         friction: this.characterFriction,
         frictionStatic: this.characterFrictionStatic

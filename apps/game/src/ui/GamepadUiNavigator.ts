@@ -7,7 +7,8 @@ export class GamepadUiNavigator {
   constructor(
     private readonly root: HTMLElement,
     private readonly isGameplayActive: () => boolean,
-    private readonly onBack: () => void
+    private readonly onBack: () => void,
+    private readonly dismissOverlay: () => boolean = () => false
   ) {}
 
   connect(): void {
@@ -72,6 +73,7 @@ export class GamepadUiNavigator {
   }
 
   private confirm(): void {
+    if (this.dismissOverlay()) return;
     const controls = this.controls();
     if (!controls.length) return;
     const current = controls.includes(document.activeElement as HTMLElement)
@@ -89,6 +91,7 @@ export class GamepadUiNavigator {
   }
 
   private back(): void {
+    if (this.dismissOverlay()) return;
     if (this.root.classList.contains("title-view")) {
       this.confirm();
       return;

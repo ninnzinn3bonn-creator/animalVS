@@ -13,6 +13,7 @@ import { startCountdownValue, winnerByHeight } from "../apps/game/src/versus/Ver
 import {
   VERSUS_ATTACK_EARNED_MESSAGE,
   VERSUS_ATTACK_INCOMING_MESSAGE,
+  VERSUS_ATTACK_NOTICE_MS,
   VERSUS_ATTACK_SCALE,
   VERSUS_CHARACTER_FRICTION,
   VERSUS_CHARACTER_FRICTION_STATIC,
@@ -198,8 +199,9 @@ describe("versus game sessions", () => {
   });
 
   it("uses the requested giant attack notices", () => {
-    expect(VERSUS_ATTACK_EARNED_MESSAGE).toBe("１０体先取！！巨大化攻撃！！");
-    expect(VERSUS_ATTACK_INCOMING_MESSAGE).toBe("相手からの巨大化攻撃を受けた！！");
+    expect(VERSUS_ATTACK_EARNED_MESSAGE).toBe("10たい せんしゅ！！ きょだいか こうげき！！");
+    expect(VERSUS_ATTACK_INCOMING_MESSAGE).toBe("きょだいか こうげきを うけた！！");
+    expect(VERSUS_ATTACK_NOTICE_MS).toBe(2_000);
   });
 
   it("enlarges the opponent's controllable character by 2 times", () => {

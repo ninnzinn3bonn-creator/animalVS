@@ -30,6 +30,7 @@ import type { GameController, GameHud, ResultReason } from "../game/GameControll
 import type { VersusMode } from "../versus/VersusMode";
 import { initialViewFromSearch } from "./InitialView";
 import { GamepadUiNavigator } from "./GamepadUiNavigator";
+import { guideContent, type GuideLines } from "./GuideContent";
 
 type CaptureMode = "standalone" | "solo" | "versus";
 interface CaptureSession {
@@ -94,6 +95,9 @@ export class AppUi implements GameHud {
   private rosterSignature = "";
   private captureSession: CaptureSession = { mode: "standalone", player: 1, characterIds: {}, skipped: {} };
   private gamepadNavigator: GamepadUiNavigator | null = null;
+  private guideEl!: HTMLElement;
+  private guideTextEl!: HTMLElement;
+  private guideDismissCallback: (() => void) | null = null;
 
   constructor(private readonly music: GameMusic) {}
 
@@ -147,9 +151,9 @@ export class AppUi implements GameHud {
             <div class="start-choice-heading">
               <span class="start-choice-logo-backdrop" aria-hidden="true"></span>
               <img src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
-              <h2>遊び方</h2>
+              <h2>あそびかた</h2>
             </div>
-            <p class="start-howto">好きなポーズで写真を撮ると、撮影した人がゲームに登場します。1人でも2人でも遊べます。</p>
+            <p class="start-howto">しゃしんを とると、あなたが キャラクターになって ゲームに とうじょうするよ！</p>
             <div class="start-choice-actions" aria-label="遊び方を選択">
               <button type="button" data-mode-choice="solo">
                 <i data-lucide="gamepad-2"></i>
@@ -289,6 +293,12 @@ export class AppUi implements GameHud {
 
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
         <div id="capture-flash" class="capture-flash" aria-hidden="true"></div>
+        <section id="guide-overlay" class="guide-overlay" role="dialog" aria-modal="true" aria-label="あそびかた" hidden>
+          <div class="guide-panel">
+            <div id="guide-text" class="guide-text"></div>
+            <p class="guide-continue">どこかを おしてね</p>
+          </div>
+        </section>
       </main>`;
 
     root.querySelector(".stage")?.append(canvas);
@@ -302,6 +312,8 @@ export class AppUi implements GameHud {
     this.videoEl = this.byId("camera-preview") as HTMLVideoElement;
     this.captureHeadingEl = this.byId("capture-heading");
     this.captureFlashEl = this.byId("capture-flash");
+    this.guideEl = this.byId("guide-overlay");
+    this.guideTextEl = this.byId("guide-text");
     this.startOverlayEl = this.byId("start-overlay");
     this.startButtonEl = root.querySelector<HTMLButtonElement>("[data-action='start']")!;
     this.rankingPanelEl = this.byId("result-ranking");
@@ -331,10 +343,22 @@ export class AppUi implements GameHud {
     this.setCaptureAvailability(false);
     this.renderIcons();
     this.bindEvents();
+    this.guideEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.dismissGuide();
+    });
+    window.addEventListener("keydown", (event) => {
+      if (this.guideEl.hidden || event.repeat || !["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.dismissGuide();
+    }, true);
     this.gamepadNavigator = new GamepadUiNavigator(
       root,
       () => (this.currentView === "game" && this.soloMode === "playing") || (this.currentView === "versus" && Boolean(this.versusMode?.isGameplayActive())),
-      () => this.navigateBack()
+      () => this.navigateBack(),
+      () => this.dismissGuide()
     );
     this.gamepadNavigator.connect();
     const initialView = initialViewFromSearch(window.location.search);
@@ -358,6 +382,10 @@ export class AppUi implements GameHud {
 
   setCharacterRefreshHandler(handler: () => Promise<void>): void {
     this.characterRefreshHandler = handler;
+  }
+
+  showVersusGuide(start: () => void): void {
+    this.showGuide(guideContent.versusGame, start);
   }
 
   setCaptureAvailability(available: boolean): void {
@@ -581,13 +609,10 @@ export class AppUi implements GameHud {
     this.root
       .querySelectorAll("[data-view]")
       .forEach((el) => el.classList.toggle("active", el.getAttribute("data-view") === view));
-    if (view !== "capture") {
-      this.stopCamera();
-    } else if (this.captureAvailable) {
-      void this.startCamera().catch(() =>
-        this.setCaptureStatus("error", "カメラを起動できませんでした。撮影をスキップしてゲームへ進めます。")
-      );
-    }
+    if (view !== "capture") this.stopCamera();
+    if (view === "start") this.showGuide(guideContent.mode);
+    if (view === "game") this.showGuide(guideContent.soloGame);
+    if (view === "capture") this.showCaptureGuide();
   }
 
   private beginCaptureSession(mode: CaptureMode): void {
@@ -613,6 +638,21 @@ export class AppUi implements GameHud {
     );
   }
 
+  private showCaptureGuide(): void {
+    const lines =
+      this.captureSession.mode === "versus"
+        ? this.captureSession.player === 1
+          ? guideContent.player1Capture
+          : guideContent.player2Capture
+        : guideContent.soloCapture;
+    this.showGuide(lines, () => {
+      if (!this.captureAvailable) return;
+      void this.startCamera().catch(() =>
+        this.setCaptureStatus("error", "カメラを起動できませんでした。撮影をスキップしてゲームへ進めます。")
+      );
+    });
+  }
+
   private completeCaptureStep(characterId: string | null, skipped = false): void {
     const { mode, player } = this.captureSession;
     if (characterId) this.captureSession.characterIds[player] = characterId;
@@ -626,7 +666,8 @@ export class AppUi implements GameHud {
     if (mode === "versus" && player === 1) {
       this.captureSession.player = 2;
       this.prepareCaptureStep();
-      if (this.captureAvailable) void this.startCamera().catch(() => undefined);
+      this.stopCamera();
+      this.showCaptureGuide();
       return;
     }
     if (mode === "versus") {
@@ -646,6 +687,23 @@ export class AppUi implements GameHud {
     if (this.currentView === "start") this.switchView("title");
     else if (this.currentView === "capture") this.switchView("start");
     else if (this.currentView !== "title") this.switchView("start");
+  }
+
+  private showGuide(lines: GuideLines, onDismiss: (() => void) | null = null): void {
+    this.guideDismissCallback = onDismiss;
+    this.guideTextEl.innerHTML = lines.map((line) => `<p>${this.escapeHtml(line)}</p>`).join("");
+    this.guideEl.hidden = false;
+    this.root.classList.add("guide-open");
+  }
+
+  private dismissGuide(): boolean {
+    if (this.guideEl.hidden) return false;
+    this.guideEl.hidden = true;
+    this.root.classList.remove("guide-open");
+    const callback = this.guideDismissCallback;
+    this.guideDismissCallback = null;
+    callback?.();
+    return true;
   }
 
   private toggleMenu(): void {

@@ -28,6 +28,7 @@ import { validateInputAssignments } from "./VersusInput";
 import {
   VERSUS_ATTACK_EARNED_MESSAGE,
   VERSUS_ATTACK_INCOMING_MESSAGE,
+  VERSUS_ATTACK_NOTICE_MS,
   VERSUS_LIVES,
   VERSUS_WORLD_HEIGHT,
   VERSUS_WORLD_WIDTH
@@ -61,7 +62,8 @@ export class VersusMode implements VersusCoordinatorEvents {
 
   constructor(
     private readonly repository: CharacterRepository,
-    private readonly music: GameMusic
+    private readonly music: GameMusic,
+    private readonly beforeMatchStart: (start: () => void) => void = (start) => start()
   ) {}
 
   mount(root: HTMLElement): void {
@@ -317,6 +319,15 @@ export class VersusMode implements VersusCoordinatorEvents {
 
   private startMatch(): void {
     const assignments = this.readAssignments();
+    const validation = validateInputAssignments(assignments[1], assignments[2], this.gamepads);
+    if (validation) {
+      this.setupStatusEl.textContent = validation;
+      return;
+    }
+    this.beforeMatchStart(() => this.beginMatch(assignments));
+  }
+
+  private beginMatch(assignments: Record<PlayerId, InputAssignment>): void {
     const error = this.coordinator.startMatch(assignments);
     if (error) {
       this.setupStatusEl.textContent = error;
@@ -468,7 +479,7 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.attackNoticeTimers[player] = window.setTimeout(() => {
       notice.hidden = true;
       delete this.attackNoticeTimers[player];
-    }, 2_400);
+    }, VERSUS_ATTACK_NOTICE_MS);
   }
 
   private hideAttackNotices(): void {

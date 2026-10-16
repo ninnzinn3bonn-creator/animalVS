@@ -1355,21 +1355,23 @@ canvas {
 
 .versus-attack-notice {
   position: absolute;
-  top: 60px;
+  top: 50%;
   left: 50%;
-  z-index: 7;
-  max-width: calc(100% - 24px);
-  padding: 6px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 6px 18px rgba(24, 38, 52, 0.12);
-  font-size: 12px;
-  font-weight: 700;
+  z-index: 9;
+  width: calc(100% - 32px);
+  padding: 18px 14px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 12px 34px rgba(24, 38, 52, 0.2);
+  font-size: 26px;
+  font-weight: 850;
+  line-height: 1.35;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
   pointer-events: none;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
+  animation: versus-cut-in 2s ease both;
   -webkit-backdrop-filter: saturate(170%) blur(12px);
   backdrop-filter: saturate(170%) blur(12px);
 }
@@ -1384,6 +1386,12 @@ canvas {
 
 .versus-attack-notice[hidden] {
   display: none;
+}
+
+@keyframes versus-cut-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.78); }
+  12%, 82% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.04); }
 }
 
 .versus-arena[data-phase="countdown"] .versus-player-status,
@@ -1592,6 +1600,61 @@ canvas {
 
 .capture-flash.show {
   opacity: 1;
+}
+
+.guide-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 28px;
+  background: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  -webkit-backdrop-filter: saturate(120%) blur(8px);
+  backdrop-filter: saturate(120%) blur(8px);
+}
+
+.guide-overlay[hidden] {
+  display: none;
+}
+
+.guide-panel {
+  display: grid;
+  width: min(900px, 100%);
+  justify-items: center;
+  gap: 24px;
+}
+
+.guide-text {
+  display: grid;
+  gap: 10px;
+  color: #1d1d1f;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.guide-text p,
+.guide-continue {
+  margin: 0;
+}
+
+.guide-continue {
+  padding: 12px 22px;
+  border: 2px solid rgba(0, 122, 255, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--system-blue);
+  font-size: 18px;
+  font-weight: 750;
+  animation: guide-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes guide-pulse {
+  50% { transform: scale(1.04); }
 }
 
 @media (min-width: 681px) {
@@ -2246,6 +2309,26 @@ input::placeholder {
 
   .character-card {
     width: 100%;
+  }
+
+  .guide-overlay {
+    padding: 22px 18px;
+  }
+
+  .guide-text {
+    gap: 8px;
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  .guide-continue {
+    font-size: 16px;
+  }
+
+  .versus-attack-notice {
+    width: calc(100% - 16px);
+    padding: 12px 8px;
+    font-size: 18px;
   }
 }
 

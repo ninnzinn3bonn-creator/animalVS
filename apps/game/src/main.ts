@@ -36,7 +36,7 @@ const versusRoot = document.getElementById("versus-root");
 if (!versusRoot) {
   throw new Error("Missing #versus-root");
 }
-const versusMode = new VersusMode(repository, music);
+const versusMode = new VersusMode(repository, music, (start) => ui.showVersusGuide(start));
 versusMode.mount(versusRoot);
 ui.setVersusMode(versusMode);
 ui.setCharacterRefreshHandler(async () => {

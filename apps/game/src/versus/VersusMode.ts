@@ -63,7 +63,8 @@ export class VersusMode implements VersusCoordinatorEvents {
   constructor(
     private readonly repository: CharacterRepository,
     private readonly music: GameMusic,
-    private readonly beforeMatchStart: (start: () => void) => void = (start) => start()
+    private readonly beforeMatchStart: (start: () => void) => void = (start) => start(),
+    private readonly returnToTitle: () => void = () => undefined
   ) {}
 
   mount(root: HTMLElement): void {
@@ -79,7 +80,7 @@ export class VersusMode implements VersusCoordinatorEvents {
           ${this.setupPlayerMarkup(2, "keyboard:arrows")}
         </div>
         <p class="versus-setup-status" data-versus-setup-status role="status"></p>
-        <button class="versus-start" type="button" data-versus-command="start">
+        <button class="versus-start" type="button" data-versus-command="start" data-gamepad-default>
           <i data-lucide="play"></i><span>対戦開始</span>
         </button>
       </section>
@@ -99,7 +100,7 @@ export class VersusMode implements VersusCoordinatorEvents {
             <h2>対戦を一時停止しました</h2>
             <p data-versus-pause-message></p>
             <div class="versus-modal-actions">
-              <button type="button" data-versus-command="resume"><i data-lucide="play"></i><span>再開</span></button>
+              <button type="button" data-versus-command="resume" data-gamepad-default><i data-lucide="play"></i><span>再開</span></button>
               <button type="button" data-versus-command="setup"><i data-lucide="settings-2"></i><span>操作設定</span></button>
             </div>
           </div>
@@ -114,8 +115,9 @@ export class VersusMode implements VersusCoordinatorEvents {
               ${this.resultCardMarkup(2)}
             </div>
             <div class="versus-modal-actions">
-              <button class="primary" type="button" data-versus-command="rematch"><i data-lucide="play"></i><span>再戦</span></button>
-              <button type="button" data-versus-command="setup"><i data-lucide="settings-2"></i><span>操作設定</span></button>
+              <button type="button" data-versus-command="title"><i data-lucide="chevron-left"></i><span>タイトルへもどる</span></button>
+              <button class="primary" type="button" data-versus-command="rematch" data-gamepad-default><i data-lucide="play"></i><span>もういちど</span></button>
+              <button type="button" data-versus-command="setup"><i data-lucide="settings-2"></i><span>そうさせってい</span></button>
             </div>
           </div>
         </div>
@@ -298,6 +300,7 @@ export class VersusMode implements VersusCoordinatorEvents {
       const command = target.closest<HTMLButtonElement>("[data-versus-command]")?.dataset.versusCommand;
       if (command === "start") this.startMatch();
       if (command === "rematch") this.startRematch();
+      if (command === "title") this.returnToTitle();
       if (command === "setup") this.coordinator.returnToSetup();
       if (command === "resume") {
         if (!this.coordinator.resume()) {

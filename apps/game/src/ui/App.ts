@@ -133,7 +133,7 @@ export class AppUi implements GameHud {
 
         <section class="view active" id="view-title">
           <div class="title-screen">
-            <button class="title-enter" type="button" data-action="title-enter" aria-label="遊び方を選ぶ画面へ進む">
+            <button class="title-enter" type="button" data-action="title-enter" data-gamepad-default aria-label="遊び方を選ぶ画面へ進む">
               <span class="title-logo-backdrop" aria-hidden="true"></span>
               <img class="title-logo" src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
               <span class="title-tap-backdrop" aria-hidden="true"></span>
@@ -155,7 +155,7 @@ export class AppUi implements GameHud {
             </div>
             <p class="start-howto">しゃしんを とると、あなたが キャラクターになって ゲームに とうじょうするよ！</p>
             <div class="start-choice-actions" aria-label="遊び方を選択">
-              <button type="button" data-mode-choice="solo">
+              <button type="button" data-mode-choice="solo" data-gamepad-default>
                 <i data-lucide="gamepad-2"></i>
                 <span><strong>1人で遊ぶ</strong><small>写真撮影からスタート</small></span>
               </button>
@@ -195,7 +195,7 @@ export class AppUi implements GameHud {
                   <ol id="ranking-list" class="ranking-list"></ol>
                 </section>
                 <p id="status">スタート待ち</p>
-                <button class="start-button" type="button" data-action="start">
+                <button class="start-button" type="button" data-action="start" data-gamepad-default>
                   <i data-lucide="play"></i><span>ゲーム開始</span>
                 </button>
               </div>
@@ -225,7 +225,7 @@ export class AppUi implements GameHud {
                 <img id="capture-review-image" alt="撮影した写真の確認" />
                 <div class="capture-review-actions">
                   <button type="button" data-action="camera-retake"><i data-lucide="refresh-ccw"></i><span>撮り直す</span></button>
-                  <button class="primary-action" type="button" data-action="camera-register"><i data-lucide="save"></i><span>この写真を登録</span></button>
+                  <button class="primary-action" type="button" data-action="camera-register" data-gamepad-default><i data-lucide="save"></i><span>この写真を登録</span></button>
                 </div>
               </div>
               <button
@@ -239,7 +239,7 @@ export class AppUi implements GameHud {
               </button>
               <div class="camera-actions">
                 <button type="button" data-action="camera-start"><i data-lucide="video"></i><span>カメラを起動</span></button>
-                <button class="primary-action" type="button" data-action="camera-shot"><i data-lucide="camera"></i><span>撮影する</span></button>
+                <button class="primary-action" type="button" data-action="camera-shot" data-gamepad-default><i data-lucide="camera"></i><span>撮影する</span></button>
               </div>
             </div>
             <form class="capture-form">
@@ -252,11 +252,11 @@ export class AppUi implements GameHud {
               <div id="capture-offline-actions" class="capture-offline-actions" hidden>
                 <button type="button" data-action="capture-retry"><i data-lucide="refresh-ccw"></i><span>接続を再確認</span></button>
               </div>
-              <button class="capture-skip" type="button" data-action="capture-skip"><i data-lucide="chevron-right"></i><span>撮影をスキップ</span></button>
+              <button class="capture-skip" type="button" data-action="capture-skip" data-gamepad-default><i data-lucide="chevron-right"></i><span>撮影をスキップ</span></button>
               <div id="capture-complete" class="capture-complete" hidden>
                 <strong>キャラクターができました！</strong>
                 <div>
-                  <button type="button" data-view="game"><i data-lucide="gamepad-2"></i><span>1人で遊ぶ</span></button>
+                  <button type="button" data-view="game" data-gamepad-default><i data-lucide="gamepad-2"></i><span>1人で遊ぶ</span></button>
                   <button type="button" data-view="versus"><i data-lucide="swords"></i><span>2人で対戦</span></button>
                 </div>
               </div>
@@ -386,6 +386,11 @@ export class AppUi implements GameHud {
 
   showVersusGuide(start: () => void): void {
     this.showGuide(guideContent.versusGame, start);
+  }
+
+  returnToTitle(): void {
+    this.switchView("title");
+    this.closeMenu();
   }
 
   setCaptureAvailability(available: boolean): void {

@@ -1478,9 +1478,29 @@ canvas {
 }
 
 .versus-result .versus-modal-panel {
+  width: min(100%, 680px);
   border-color: rgba(255, 255, 255, 0.72);
   background: rgba(255, 255, 255, 0.68);
   box-shadow: 0 16px 44px rgba(43, 56, 72, 0.14);
+}
+
+.versus-result .versus-modal-actions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.versus-result .versus-modal-actions button {
+  min-width: 0;
+  min-height: 62px;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.versus-result .versus-modal-actions button span {
+  overflow-wrap: anywhere;
 }
 
 .versus-modal-panel > .lucide {
@@ -2329,6 +2349,14 @@ input::placeholder {
     width: calc(100% - 16px);
     padding: 12px 8px;
     font-size: 18px;
+  }
+
+  .versus-result .versus-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .versus-result .versus-modal-actions button {
+    min-height: 52px;
   }
 }
 

@@ -1,5 +1,12 @@
 type Direction = "previous" | "next";
 
+export function defaultControlIndex(controls: readonly Pick<HTMLElement, "hasAttribute" | "classList">[]): number {
+  const preferred = controls.findIndex((control) => control.hasAttribute("data-gamepad-default"));
+  if (preferred >= 0) return preferred;
+  const active = controls.findIndex((control) => control.classList.contains("active"));
+  return active >= 0 ? active : 0;
+}
+
 export class GamepadUiNavigator {
   private frame: number | null = null;
   private previousPressed = new Set<string>();
@@ -68,7 +75,7 @@ export class GamepadUiNavigator {
     if (!controls.length) return;
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const delta = direction === "next" ? 1 : -1;
-    const next = current < 0 ? 0 : (current + delta + controls.length) % controls.length;
+    const next = current < 0 ? defaultControlIndex(controls) : (current + delta + controls.length) % controls.length;
     controls[next].focus();
   }
 
@@ -76,9 +83,10 @@ export class GamepadUiNavigator {
     if (this.dismissOverlay()) return;
     const controls = this.controls();
     if (!controls.length) return;
+    const defaultControl = controls[defaultControlIndex(controls)];
     const current = controls.includes(document.activeElement as HTMLElement)
       ? (document.activeElement as HTMLElement)
-      : controls[0];
+      : defaultControl ?? controls[0];
     current.focus();
     if (current instanceof HTMLSelectElement) {
       const enabled = Array.from(current.options).filter((option) => !option.disabled);

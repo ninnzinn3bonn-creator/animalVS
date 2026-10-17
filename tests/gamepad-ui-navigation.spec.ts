@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultControlIndex, GamepadReleaseGate } from "../apps/game/src/ui/GamepadUiNavigator";
+import { defaultControlIndex, GamepadReleaseGate, movedControlIndex } from "../apps/game/src/ui/GamepadUiNavigator";
 
 describe("gamepad UI default focus", () => {
   it("prefers the control that continues the game", () => {
@@ -33,5 +33,15 @@ describe("gamepad overlay input release", () => {
     expect(gate.consume(false)).toBe(true);
     expect(gate.consume(false)).toBe(false);
     expect(gate.consume(true)).toBe(false);
+  });
+});
+
+describe("gamepad choice navigation", () => {
+  it("moves right from the preferred 1P choice to the 2P choice on the first press", () => {
+    expect(movedControlIndex(2, -1, 0, "next")).toBe(1);
+  });
+
+  it("moves left from the preferred choice and wraps around", () => {
+    expect(movedControlIndex(2, -1, 0, "previous")).toBe(1);
   });
 });

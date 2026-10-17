@@ -23,6 +23,18 @@ export function defaultControlIndex(controls: readonly Pick<HTMLElement, "hasAtt
   return active >= 0 ? active : 0;
 }
 
+export function movedControlIndex(
+  controlCount: number,
+  currentIndex: number,
+  preferredIndex: number,
+  direction: Direction
+): number {
+  if (controlCount <= 0) return -1;
+  const start = currentIndex < 0 ? preferredIndex : currentIndex;
+  const delta = direction === "next" ? 1 : -1;
+  return (start + delta + controlCount) % controlCount;
+}
+
 export class GamepadUiNavigator {
   private frame: number | null = null;
   private previousPressed = new Set<string>();
@@ -48,6 +60,12 @@ export class GamepadUiNavigator {
   dispose(): void {
     if (this.frame !== null) window.cancelAnimationFrame(this.frame);
     this.frame = null;
+  }
+
+  focusDefaultControl(): void {
+    const controls = this.controls();
+    if (!controls.length) return;
+    controls[defaultControlIndex(controls)]?.focus();
   }
 
   private poll(): void {
@@ -112,8 +130,7 @@ export class GamepadUiNavigator {
     const controls = this.controls();
     if (!controls.length) return;
     const current = controls.indexOf(document.activeElement as HTMLElement);
-    const delta = direction === "next" ? 1 : -1;
-    const next = current < 0 ? defaultControlIndex(controls) : (current + delta + controls.length) % controls.length;
+    const next = movedControlIndex(controls.length, current, defaultControlIndex(controls), direction);
     controls[next].focus();
   }
 

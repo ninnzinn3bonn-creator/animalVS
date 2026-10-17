@@ -806,6 +806,7 @@ export class AppUi implements GameHud {
     const callback = this.guideDismissCallback;
     this.guideDismissCallback = null;
     callback?.();
+    window.requestAnimationFrame(() => this.gamepadNavigator?.focusDefaultControl());
     return true;
   }
 

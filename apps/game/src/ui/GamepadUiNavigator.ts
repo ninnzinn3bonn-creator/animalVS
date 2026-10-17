@@ -75,6 +75,7 @@ export class GamepadUiNavigator {
   private previousAnyPressed = new Set<string>();
   private readonly releaseGate = new GamepadReleaseGate();
   private readonly neutralAxes = new Map<number, number[]>();
+  private visibleControls: HTMLElement[] = [];
 
   constructor(
     private readonly root: HTMLElement,
@@ -127,14 +128,25 @@ export class GamepadUiNavigator {
     this.previousAnyPressed = anyPressed;
     if (this.isGameplayActive()) {
       this.previousPressed.clear();
+      this.visibleControls = [];
       return;
+    }
+    const controls = this.controls();
+    if (this.controlsChanged(controls)) {
+      this.visibleControls = controls;
+      this.focusControl(controls, defaultControlIndex(controls));
+      this.previousPressed.clear();
     }
     const pressed = new Set<string>();
     for (const pad of gamepads) {
       if (!pad) continue;
       if (!this.neutralAxes.has(pad.index)) this.neutralAxes.set(pad.index, Array.from(pad.axes));
+      const neutral = this.neutralAxes.get(pad.index)!;
+      pad.axes.forEach((value, index) => {
+        if (value > 1.5) neutral[index] = value;
+      });
       const face = gamepadFaceMapping(pad);
-      const direction = gamepadMenuDirection(pad, this.neutralAxes.get(pad.index));
+      const direction = gamepadMenuDirection(pad, neutral);
       this.edge(pressed, `${pad.index}:move:${direction ?? "idle"}`, direction);
       const genericConfirm = newlyPressed.some((key) => {
         if (!key.startsWith(`${pad.index}:button:`)) return false;
@@ -172,6 +184,10 @@ export class GamepadUiNavigator {
     return Array.from(this.root.querySelectorAll<HTMLElement>(selectors)).filter(
       (element) => element.offsetParent !== null && !element.closest("[hidden]")
     );
+  }
+
+  private controlsChanged(controls: HTMLElement[]): boolean {
+    return controls.length !== this.visibleControls.length || controls.some((control, index) => control !== this.visibleControls[index]);
   }
 
   private move(direction: Direction): void {

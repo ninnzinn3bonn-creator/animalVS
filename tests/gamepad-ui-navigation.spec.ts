@@ -92,6 +92,10 @@ describe("generic gamepad menu direction", () => {
     expect(gamepadHatDirection(0.428571)).toBe("previous");
     expect(gamepadHatDirection(1)).toBe("previous");
   });
+
+  it("treats an updated Buffalo neutral value as no movement", () => {
+    expect(gamepadMenuDirection({ axes: [3.285714], buttons: buttons() }, [3.285714])).toBeNull();
+  });
 });
 
 describe("generic gamepad confirmation", () => {

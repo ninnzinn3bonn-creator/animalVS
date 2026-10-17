@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { GameController } from "../apps/game/src/game/GameController";
 import { SoloGamepadInput } from "../apps/game/src/game/SoloGamepadInput";
 
-function gamepad(pressed: number[] = [], axes = [0, 0]): Gamepad {
+function gamepad(pressed: number[] = [], axes = [0, 0], mapping: GamepadMappingType = "standard"): Gamepad {
   return {
     axes,
     buttons: Array.from({ length: 16 }, (_, index) => ({ pressed: pressed.includes(index), touched: false, value: pressed.includes(index) ? 1 : 0 })),
     connected: true,
     id: "USB controller",
     index: 0,
-    mapping: "standard",
+    mapping,
     timestamp: 0,
     vibrationActuator: null
   } as unknown as Gamepad;
@@ -43,5 +43,14 @@ describe("solo gamepad input", () => {
     pads = [];
     input.poll(200);
     expect(controller.setPaused).toHaveBeenCalledWith(true);
+  });
+
+  it("uses button 1 as A on a non-standard USB Famicom controller", () => {
+    const controller = {
+      move: vi.fn(), rotate: vi.fn(), drop: vi.fn(), pauseToggle: vi.fn(), setPaused: vi.fn()
+    } as unknown as GameController;
+    const input = new SoloGamepadInput(controller, undefined, () => [gamepad([1], [0, 0], "")]);
+    input.poll(100);
+    expect(controller.drop).toHaveBeenCalledTimes(1);
   });
 });

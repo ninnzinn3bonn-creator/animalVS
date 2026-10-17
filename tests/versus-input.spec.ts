@@ -52,11 +52,11 @@ describe("versus input assignments", () => {
     expect(validateInputAssignments("gamepad:0", "gamepad:1", gamepads)).toBeNull();
   });
 
-  it("maps a generic USB Famicom controller using axes and A/B/START", () => {
-    const controls = gamepadControlState(fakeGamepad([0, -1], [0, 1, 9]));
+  it("maps a generic USB Famicom controller using axes, A and START without double actions", () => {
+    const controls = gamepadControlState({ ...fakeGamepad([0, -1], [1, 9]), mapping: "" });
 
     expect(controls.rotateLeft).toBe(true);
-    expect(controls.rotateRight).toBe(true);
+    expect(controls.rotateRight).toBe(false);
     expect(controls.drop).toBe(true);
     expect(controls.pause).toBe(true);
   });

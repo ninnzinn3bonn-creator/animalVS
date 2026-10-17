@@ -1,3 +1,5 @@
+import { gamepadButtonPressed, gamepadFaceMapping } from "../game/GamepadMapping";
+
 type Direction = "previous" | "next";
 
 export class GamepadReleaseGate {
@@ -76,13 +78,14 @@ export class GamepadUiNavigator {
     const pressed = new Set<string>();
     for (const pad of gamepads) {
       if (!pad) continue;
+      const face = gamepadFaceMapping(pad);
       const left = Boolean(pad.buttons[14]?.pressed) || (pad.axes[0] ?? 0) < -0.6;
       const right = Boolean(pad.buttons[15]?.pressed) || (pad.axes[0] ?? 0) > 0.6;
       const up = Boolean(pad.buttons[12]?.pressed) || (pad.axes[1] ?? 0) < -0.6;
       const down = Boolean(pad.buttons[13]?.pressed) || (pad.axes[1] ?? 0) > 0.6;
       this.edge(pressed, `${pad.index}:move`, left || up ? "previous" : right || down ? "next" : null);
-      this.edge(pressed, `${pad.index}:a`, pad.buttons[0]?.pressed ? "confirm" : null);
-      this.edge(pressed, `${pad.index}:b`, pad.buttons[1]?.pressed ? "back" : null);
+      this.edge(pressed, `${pad.index}:a`, gamepadButtonPressed(pad, face.confirm) ? "confirm" : null);
+      this.edge(pressed, `${pad.index}:b`, gamepadButtonPressed(pad, face.back) ? "back" : null);
     }
     this.previousPressed = pressed;
   }

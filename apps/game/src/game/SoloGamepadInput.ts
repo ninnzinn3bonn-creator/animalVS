@@ -1,4 +1,5 @@
 import type { GameController } from "./GameController";
+import { gamepadButtonPressed, gamepadFaceMapping } from "./GamepadMapping";
 
 export interface SoloGamepadStatus {
   connected: boolean;
@@ -49,6 +50,7 @@ export class SoloGamepadInput {
     if (!pad) return;
 
     const down = (index: number) => Boolean(pad?.buttons[index]?.pressed);
+    const face = gamepadFaceMapping(pad);
     const left = down(14) || (pad.axes[0] ?? 0) < -0.6;
     const right = down(15) || (pad.axes[0] ?? 0) > 0.6;
     if ((left || right) && now - this.lastMoveAt >= 90) {
@@ -64,7 +66,7 @@ export class SoloGamepadInput {
     };
     edge("rotate-left", down(12) || (pad.axes[1] ?? 0) < -0.6, () => this.controller.rotate(-1));
     edge("rotate-right", down(13) || (pad.axes[1] ?? 0) > 0.6, () => this.controller.rotate(1));
-    edge("drop", down(0), () => this.controller.drop());
+    edge("drop", gamepadButtonPressed(pad, face.confirm), () => this.controller.drop());
     edge("pause", down(9), () => this.controller.pauseToggle());
     this.previous = pressed;
   }

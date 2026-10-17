@@ -1,4 +1,5 @@
 import type { PlayerId } from "../game/TurnManager";
+import { gamepadButtonPressed, gamepadFaceMapping } from "../game/GamepadMapping";
 
 export type VersusAction = "left" | "right" | "rotate-left" | "rotate-right" | "drop";
 export type InputAssignment = "keyboard:wasd" | "keyboard:arrows" | "screen" | `gamepad:${number}`;
@@ -73,16 +74,20 @@ export function gamepadIndex(assignment: InputAssignment): number {
   return Number(assignment.slice("gamepad:".length));
 }
 
-export function gamepadControlState(gamepad: Pick<Gamepad, "axes" | "buttons">): GamepadControlState {
+export function gamepadControlState(
+  gamepad: Pick<Gamepad, "axes" | "buttons"> & Partial<Pick<Gamepad, "mapping">>
+): GamepadControlState {
   const horizontal = gamepad.axes[0] ?? 0;
   const vertical = gamepad.axes[1] ?? 0;
   const pressed = (index: number) => Boolean(gamepad.buttons[index]?.pressed);
+  const face = gamepadFaceMapping(gamepad);
+  const standard = gamepad.mapping === "standard";
   return {
     left: horizontal < -0.5 || pressed(14),
     right: horizontal > 0.5 || pressed(15),
     rotateLeft: vertical < -0.5 || pressed(12) || pressed(4) || pressed(8),
-    rotateRight: vertical > 0.5 || pressed(13) || pressed(5) || pressed(1),
-    drop: pressed(0),
+    rotateRight: vertical > 0.5 || pressed(13) || pressed(5) || (standard && pressed(1)),
+    drop: gamepadButtonPressed(gamepad, face.confirm),
     pause: pressed(9)
   };
 }

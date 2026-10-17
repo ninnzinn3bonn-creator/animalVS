@@ -24,6 +24,7 @@ import type { GameMusic } from "../audio/GameMusic";
 import type { CharacterDefinition } from "../character/CharacterTypes";
 import { CaptureCooldown } from "../capture/CaptureCooldown";
 import { captureFrameSize } from "../capture/CaptureFrame";
+import { captureDestination, type CaptureMode } from "../capture/CaptureFlow";
 import { serviceEndpoints } from "../config/services";
 import { loadLeaderboard, recordLeaderboardEntry, syncLeaderboard, type LeaderboardEntry } from "../game/Leaderboard";
 import type { GameController, GameHud, ResultReason } from "../game/GameController";
@@ -32,7 +33,6 @@ import { initialViewFromSearch } from "./InitialView";
 import { GamepadUiNavigator } from "./GamepadUiNavigator";
 import { guideContent, type GuideLines } from "./GuideContent";
 
-type CaptureMode = "standalone" | "solo" | "versus";
 interface CaptureSession {
   mode: CaptureMode;
   player: 1 | 2;
@@ -127,8 +127,8 @@ export class AppUi implements GameHud {
               <i data-lucide="menu"></i>
             </button>
             <nav id="app-menu" class="app-menu" aria-label="メインメニュー" hidden>
-              <button type="button" data-view="game"><i data-lucide="gamepad-2"></i><span>1人用ゲーム</span></button>
-              <button type="button" data-view="versus"><i data-lucide="swords"></i><span>2人対戦</span></button>
+              <button type="button" data-mode-choice="solo"><i data-lucide="gamepad-2"></i><span>1人で遊ぶ</span></button>
+              <button type="button" data-mode-choice="versus"><i data-lucide="swords"></i><span>2人で対戦</span></button>
               <button type="button" data-view="capture"><i data-lucide="camera"></i><span>キャラ撮影</span></button>
               <button type="button" data-view="characters"><i data-lucide="users"></i><span>キャラクター</span></button>
               <button type="button" data-action="music-toggle" aria-pressed="true"><i data-lucide="volume-2"></i><span data-music-label>音楽 オン</span></button>
@@ -708,26 +708,28 @@ export class AppUi implements GameHud {
     const { mode, player } = this.captureSession;
     if (characterId) this.captureSession.characterIds[player] = characterId;
     if (skipped) this.captureSession.skipped[player] = true;
-    if (mode === "solo") {
+    const destination = captureDestination({ mode, player });
+    if (destination === "solo-game") {
       this.controller?.setInitialCharacter(characterId);
       this.controller?.restart();
       this.switchView("game");
       return;
     }
-    if (mode === "versus" && player === 1) {
+    if (destination === "versus-player-2") {
       this.captureSession.player = 2;
       this.prepareCaptureStep();
       this.stopCamera();
       this.showCaptureGuide();
       return;
     }
-    if (mode === "versus") {
+    if (destination === "versus-settings") {
       this.versusMode?.setInitialCharacters(this.captureSession.characterIds);
       this.versusMode?.returnToPreparation();
       this.switchView("versus");
       return;
     }
-    this.characterCreated();
+    if (characterId) this.characterCreated();
+    else this.setCaptureStatus("info", "さつえいを スキップしました。メニューから あそびかたを えらべます。");
   }
 
   private dismissTopOverlay(): boolean {

@@ -1622,6 +1622,102 @@ canvas {
   opacity: 1;
 }
 
+.capture-generation {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(247, 250, 252, 0.92);
+  text-align: center;
+  cursor: wait;
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.capture-generation[hidden] {
+  display: none;
+}
+
+.capture-generation[data-state="success"] {
+  cursor: pointer;
+}
+
+.capture-generation-panel {
+  display: grid;
+  width: min(560px, 100%);
+  justify-items: center;
+  gap: 24px;
+}
+
+.capture-generation-spinner {
+  width: 92px;
+  height: 92px;
+  border: 10px solid rgba(0, 122, 255, 0.16);
+  border-top-color: var(--system-blue);
+  border-radius: 50%;
+  animation: capture-generation-spin 900ms linear infinite;
+}
+
+.capture-generation-spinner[hidden] {
+  display: none;
+}
+
+.capture-generation[data-state="success"] .capture-generation-panel::before {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--system-green);
+  color: #fff;
+  content: "✓";
+  font-size: 58px;
+  font-weight: 800;
+  line-height: 1;
+  animation: capture-generation-done 320ms ease-out;
+}
+
+.capture-generation strong {
+  font-size: clamp(30px, 5vw, 52px);
+  line-height: 1.25;
+}
+
+.capture-generation p {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: clamp(20px, 3vw, 30px);
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.capture-generation-actions {
+  display: grid;
+  width: min(420px, 100%);
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.capture-generation-actions[hidden] {
+  display: none;
+}
+
+.capture-generation-actions button {
+  min-height: 64px;
+  font-size: 20px;
+  font-weight: 750;
+}
+
+@keyframes capture-generation-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes capture-generation-done {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .guide-overlay {
   position: fixed;
   inset: 0;
@@ -2412,6 +2508,18 @@ input::placeholder {
 }
 
 @media (min-width: 681px) {
+  .game-screen {
+    --play-width: min(calc(100dvh * 390 / 680), calc(100vw - 32px), 620px);
+  }
+
+  .stage {
+    border-radius: 14px;
+  }
+
+  .controls button {
+    min-height: 58px;
+  }
+
   .camera-box {
     width: min(100%, calc((100dvh - 110px) * 16 / 9));
     aspect-ratio: 16 / 9;

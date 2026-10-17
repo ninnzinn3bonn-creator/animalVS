@@ -3,6 +3,7 @@ import { GameMusic } from "./audio/GameMusic";
 import { CharacterRepository } from "./character/CharacterRepository";
 import { serviceEndpoints } from "./config/services";
 import { GameController } from "./game/GameController";
+import { SoloGamepadInput } from "./game/SoloGamepadInput";
 import { PhysicsWorld } from "./game/PhysicsWorld";
 import { CharacterSocket } from "./network/CharacterSocket";
 import { AppUi } from "./ui/App";
@@ -31,6 +32,10 @@ const world = new PhysicsWorld(canvas, width, height);
 const controller = new GameController(world, repository, ui);
 ui.setController(controller);
 controller.start();
+const soloGamepad = new SoloGamepadInput(controller, ({ connected }) => {
+  if (!connected) ui.notify("コントローラーが はずれたので、ゲームを とめました");
+});
+soloGamepad.connect();
 
 const versusRoot = document.getElementById("versus-root");
 if (!versusRoot) {
@@ -58,7 +63,6 @@ if (repository.isRemoteAvailable()) {
         await repository.load();
         controller.refreshCharacters();
         versusMode.refreshCharacters();
-        ui.characterCreated();
       }
       if (message.type === "character.updated") {
         await repository.load();

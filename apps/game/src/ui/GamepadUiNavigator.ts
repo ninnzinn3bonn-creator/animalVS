@@ -10,6 +10,7 @@ export function defaultControlIndex(controls: readonly Pick<HTMLElement, "hasAtt
 export class GamepadUiNavigator {
   private frame: number | null = null;
   private previousPressed = new Set<string>();
+  private previousAnyPressed = new Set<string>();
 
   constructor(
     private readonly root: HTMLElement,
@@ -33,11 +34,24 @@ export class GamepadUiNavigator {
   }
 
   private poll(): void {
+    const gamepads = navigator.getGamepads?.() ?? [];
+    const anyPressed = new Set<string>();
+    for (const pad of gamepads) {
+      if (!pad) continue;
+      pad.buttons.forEach((button, index) => {
+        if (button.pressed) anyPressed.add(`${pad.index}:button:${index}`);
+      });
+    }
+    if ([...anyPressed].some((key) => !this.previousAnyPressed.has(key)) && this.dismissOverlay()) {
+      this.previousAnyPressed = anyPressed;
+      this.previousPressed.clear();
+      return;
+    }
+    this.previousAnyPressed = anyPressed;
     if (this.isGameplayActive()) {
       this.previousPressed.clear();
       return;
     }
-    const gamepads = navigator.getGamepads?.() ?? [];
     const pressed = new Set<string>();
     for (const pad of gamepads) {
       if (!pad) continue;

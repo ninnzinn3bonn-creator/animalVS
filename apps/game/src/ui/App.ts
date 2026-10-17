@@ -87,6 +87,13 @@ export class AppUi implements GameHud {
   private pendingCaptureUrl: string | null = null;
   private captureOfflineActionsEl!: HTMLElement;
   private captureCompleteEl!: HTMLElement;
+  private captureGenerationEl!: HTMLElement;
+  private captureGenerationSpinnerEl!: HTMLElement;
+  private captureGenerationTitleEl!: HTMLElement;
+  private captureGenerationMessageEl!: HTMLElement;
+  private captureGenerationActionsEl!: HTMLElement;
+  private captureOperation = 0;
+  private generatedCharacterId: string | null = null;
   private characterRefreshHandler: (() => Promise<void>) | null = null;
   private controller: GameController | null = null;
   private versusMode: VersusMode | null = null;
@@ -293,6 +300,17 @@ export class AppUi implements GameHud {
 
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
         <div id="capture-flash" class="capture-flash" aria-hidden="true"></div>
+        <section id="capture-generation" class="capture-generation" role="dialog" aria-modal="true" aria-live="assertive" hidden>
+          <div class="capture-generation-panel">
+            <div id="capture-generation-spinner" class="capture-generation-spinner" aria-hidden="true"></div>
+            <strong id="capture-generation-title">キャラクターを つくっているよ</strong>
+            <p id="capture-generation-message">10びょうくらい まってね<br />がめんに さわらないでね</p>
+            <div id="capture-generation-actions" class="capture-generation-actions" hidden>
+              <button type="button" data-action="capture-generation-retry" data-gamepad-default>もういちど</button>
+              <button type="button" data-action="capture-generation-skip">スキップ</button>
+            </div>
+          </div>
+        </section>
         <section id="guide-overlay" class="guide-overlay" role="dialog" aria-modal="true" aria-label="あそびかた" hidden>
           <div class="guide-panel">
             <div id="guide-text" class="guide-text"></div>
@@ -335,6 +353,11 @@ export class AppUi implements GameHud {
     this.captureReviewImageEl = this.byId("capture-review-image") as HTMLImageElement;
     this.captureOfflineActionsEl = this.byId("capture-offline-actions");
     this.captureCompleteEl = this.byId("capture-complete");
+    this.captureGenerationEl = this.byId("capture-generation");
+    this.captureGenerationSpinnerEl = this.byId("capture-generation-spinner");
+    this.captureGenerationTitleEl = this.byId("capture-generation-title");
+    this.captureGenerationMessageEl = this.byId("capture-generation-message");
+    this.captureGenerationActionsEl = this.byId("capture-generation-actions");
     this.deleteDialogEl = this.byId("delete-dialog") as HTMLDialogElement;
     this.deleteDialogMessageEl = this.byId("delete-dialog-message");
     this.deleteConfirmButtonEl = root.querySelector<HTMLButtonElement>("[data-action='character-delete-confirm']")!;
@@ -348,7 +371,20 @@ export class AppUi implements GameHud {
       event.stopPropagation();
       this.dismissGuide();
     });
+    this.captureGenerationEl.addEventListener("click", (event) => {
+      const state = this.captureGenerationEl.dataset.state;
+      if (state === "error") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (state === "success") this.finishGeneratedCapture();
+    });
     window.addEventListener("keydown", (event) => {
+      if (!this.captureGenerationEl.hidden) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (this.captureGenerationEl.dataset.state === "success" && !event.repeat) this.finishGeneratedCapture();
+        return;
+      }
       if (this.guideEl.hidden || event.repeat || !["Enter", " "].includes(event.key)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -358,7 +394,7 @@ export class AppUi implements GameHud {
       root,
       () => (this.currentView === "game" && this.soloMode === "playing") || (this.currentView === "versus" && Boolean(this.versusMode?.isGameplayActive())),
       () => this.navigateBack(),
-      () => this.dismissGuide()
+      () => this.dismissTopOverlay()
     );
     this.gamepadNavigator.connect();
     const initialView = initialViewFromSearch(window.location.search);
@@ -470,6 +506,7 @@ export class AppUi implements GameHud {
   }
 
   characterProcessing(): void {
+    if (this.captureSubmitting) this.showCaptureGeneration("processing");
     this.setCaptureStatus("processing", "写真からキャラクターを作成中です。作成完了まで10秒ほどお待ちください。");
     this.notify("キャラクターを作成しています");
   }
@@ -483,6 +520,7 @@ export class AppUi implements GameHud {
   }
 
   characterCreationFailed(): void {
+    if (this.captureSubmitting) this.showCaptureGeneration("error");
     this.setCaptureStatus("error", "キャラクターの作成に失敗しました。もう一度撮影してください。");
     this.notify("キャラクターを作成できませんでした");
   }
@@ -582,6 +620,14 @@ export class AppUi implements GameHud {
       if (action === "camera-register") void this.submitCapture();
       if (action === "capture-skip") this.completeCaptureStep(null, true);
       if (action === "capture-retry") void this.retryCaptureConnection();
+      if (action === "capture-generation-retry") {
+        this.hideCaptureGeneration();
+        void this.submitCapture();
+      }
+      if (action === "capture-generation-skip") {
+        this.hideCaptureGeneration();
+        this.completeCaptureStep(null, true);
+      }
     });
     this.root.addEventListener("change", (event) => {
       const toggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-character-enabled]");
@@ -682,6 +728,50 @@ export class AppUi implements GameHud {
       return;
     }
     this.characterCreated();
+  }
+
+  private dismissTopOverlay(): boolean {
+    if (!this.captureGenerationEl.hidden) {
+      const state = this.captureGenerationEl.dataset.state;
+      if (state === "success") {
+        this.finishGeneratedCapture();
+        return true;
+      }
+      return state === "processing";
+    }
+    return this.dismissGuide();
+  }
+
+  private showCaptureGeneration(state: "processing" | "success" | "error"): void {
+    this.captureGenerationEl.hidden = false;
+    this.captureGenerationEl.dataset.state = state;
+    this.captureGenerationSpinnerEl.hidden = state !== "processing";
+    this.captureGenerationActionsEl.hidden = state !== "error";
+    if (state === "processing") {
+      this.captureGenerationTitleEl.textContent = "キャラクターを つくっているよ";
+      this.captureGenerationMessageEl.innerHTML = "10びょうくらい まってね<br>がめんに さわらないでね";
+    } else if (state === "success") {
+      this.captureGenerationTitleEl.textContent = "できました！";
+      this.captureGenerationMessageEl.textContent = "どれか ボタンを おしてね";
+    } else {
+      this.captureGenerationTitleEl.textContent = "うまく つくれなかったよ";
+      this.captureGenerationMessageEl.textContent = "もういちど ためすか、スキップしてね";
+    }
+    this.root.classList.add("capture-generation-open");
+  }
+
+  private hideCaptureGeneration(): void {
+    this.captureGenerationEl.hidden = true;
+    delete this.captureGenerationEl.dataset.state;
+    this.root.classList.remove("capture-generation-open");
+  }
+
+  private finishGeneratedCapture(): void {
+    if (this.captureGenerationEl.hidden || this.captureGenerationEl.dataset.state !== "success") return;
+    const characterId = this.generatedCharacterId;
+    this.generatedCharacterId = null;
+    this.hideCaptureGeneration();
+    this.completeCaptureStep(characterId);
   }
 
   private navigateBack(): void {
@@ -932,14 +1022,23 @@ export class AppUi implements GameHud {
     this.updateCaptureButton();
     this.setCaptureStep(2);
     this.setCaptureStatus("processing", "写真を送信しています。キャラクターの作成完了まで10秒ほどお待ちください。");
+    this.stopCamera();
+    const operation = ++this.captureOperation;
+    this.generatedCharacterId = null;
+    this.showCaptureGeneration("processing");
     const name = this.captureCharacterName();
     try {
       const characterId = await this.submitLocalCapture(name);
+      if (operation !== this.captureOperation) return;
       this.startCaptureCooldown();
-      this.completeCaptureStep(characterId);
+      this.generatedCharacterId = characterId;
+      this.characterCreated();
+      this.showCaptureGeneration("success");
     } catch (error) {
+      if (operation !== this.captureOperation) return;
       this.setCaptureStatus("error", error instanceof Error ? error.message : "キャラクターを作成できませんでした。");
       this.notify("キャラクターを作成できませんでした");
+      this.showCaptureGeneration("error");
     } finally {
       this.captureSubmitting = false;
       this.updateCaptureButton();
@@ -957,7 +1056,6 @@ export class AppUi implements GameHud {
     this.notify("写真を受け付けました。作成完了まで10秒ほどお待ちください");
     const characterId = await this.waitForLocalCharacter(existingIds);
     await this.characterRefreshHandler?.();
-    this.characterCreated();
     return characterId;
   }
 

@@ -2,12 +2,17 @@ import { gamepadButtonPressed, gamepadFaceMapping } from "../game/GamepadMapping
 
 type Direction = "previous" | "next";
 
-export function gamepadMenuDirection(gamepad: Pick<Gamepad, "axes" | "buttons">): Direction | null {
+export function gamepadMenuDirection(
+  gamepad: Pick<Gamepad, "axes" | "buttons">,
+  neutralAxes: readonly number[] = gamepad.axes.map(() => 0)
+): Direction | null {
   if (gamepad.buttons[14]?.pressed || gamepad.buttons[12]?.pressed || gamepad.buttons[4]?.pressed) return "previous";
   if (gamepad.buttons[15]?.pressed || gamepad.buttons[13]?.pressed || gamepad.buttons[5]?.pressed) return "next";
-  const activeAxis = gamepad.axes.find((value) => Math.abs(value) >= 0.35 && Math.abs(value) <= 1.01);
-  if (activeAxis === undefined) return null;
-  return activeAxis < 0 ? "previous" : "next";
+  for (let index = 0; index < gamepad.axes.length; index += 1) {
+    const delta = gamepad.axes[index] - (neutralAxes[index] ?? 0);
+    if (Math.abs(delta) >= 0.35) return delta < 0 ? "previous" : "next";
+  }
+  return null;
 }
 
 export class GamepadReleaseGate {
@@ -48,6 +53,7 @@ export class GamepadUiNavigator {
   private previousPressed = new Set<string>();
   private previousAnyPressed = new Set<string>();
   private readonly releaseGate = new GamepadReleaseGate();
+  private readonly neutralAxes = new Map<number, number[]>();
 
   constructor(
     private readonly root: HTMLElement,
@@ -105,8 +111,10 @@ export class GamepadUiNavigator {
     const pressed = new Set<string>();
     for (const pad of gamepads) {
       if (!pad) continue;
+      if (!this.neutralAxes.has(pad.index)) this.neutralAxes.set(pad.index, Array.from(pad.axes));
       const face = gamepadFaceMapping(pad);
-      this.edge(pressed, `${pad.index}:move`, gamepadMenuDirection(pad));
+      const direction = gamepadMenuDirection(pad, this.neutralAxes.get(pad.index));
+      this.edge(pressed, `${pad.index}:move:${direction ?? "idle"}`, direction);
       if (this.isModeSelectionActive()) {
         const unknownConfirm = newlyPressed.some((key) => {
           const index = Number(key.slice(key.lastIndexOf(":") + 1));

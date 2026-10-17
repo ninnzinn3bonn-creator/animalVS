@@ -66,4 +66,11 @@ describe("generic gamepad menu direction", () => {
     expect(gamepadMenuDirection({ axes: [0, 0, -1], buttons: buttons() })).toBe("previous");
     expect(gamepadMenuDirection({ axes: [0, 0, 0.72], buttons: buttons() })).toBe("next");
   });
+
+  it("measures direction from the controller's real neutral axis values", () => {
+    const pad = { axes: [-1, 3.285], buttons: buttons() };
+    expect(gamepadMenuDirection(pad, [-1, 3.285])).toBeNull();
+    expect(gamepadMenuDirection({ ...pad, axes: [1, 3.285] }, [-1, 3.285])).toBe("next");
+    expect(gamepadMenuDirection({ ...pad, axes: [-1, -1] }, [-1, 3.285])).toBe("previous");
+  });
 });

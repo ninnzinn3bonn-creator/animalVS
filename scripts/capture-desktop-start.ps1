@@ -11,7 +11,7 @@ $startScript = Join-Path $PSScriptRoot "capture-start.ps1"
 $stopScript = Join-Path $PSScriptRoot "capture-stop.ps1"
 $messagesPath = Join-Path $PSScriptRoot "capture-desktop-messages.json"
 $logFile = Join-Path $runtime "capture-desktop-launcher.log"
-$gameUrl = "https://human-stack-battle-game.pages.dev/?view=capture"
+$gameUrl = "https://human-stack-battle-game.pages.dev/"
 $publicHealthUrl = "https://human-stack-battle-game.pages.dev/capture/api/health"
 $messages = [IO.File]::ReadAllText($messagesPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultControlIndex } from "../apps/game/src/ui/GamepadUiNavigator";
+import { defaultControlIndex, GamepadReleaseGate } from "../apps/game/src/ui/GamepadUiNavigator";
 
 describe("gamepad UI default focus", () => {
   it("prefers the control that continues the game", () => {
@@ -20,5 +20,18 @@ describe("gamepad UI default focus", () => {
       classList: { contains: (name: string) => name === "active" && active }
     }));
     expect(defaultControlIndex(controls)).toBe(1);
+  });
+});
+
+describe("gamepad overlay input release", () => {
+  it("blocks the held button and its release before accepting another press", () => {
+    const gate = new GamepadReleaseGate();
+    gate.arm();
+
+    expect(gate.consume(true)).toBe(true);
+    expect(gate.consume(true)).toBe(true);
+    expect(gate.consume(false)).toBe(true);
+    expect(gate.consume(false)).toBe(false);
+    expect(gate.consume(true)).toBe(false);
   });
 });

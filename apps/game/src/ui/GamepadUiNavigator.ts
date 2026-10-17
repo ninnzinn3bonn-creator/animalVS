@@ -1,5 +1,19 @@
 type Direction = "previous" | "next";
 
+export class GamepadReleaseGate {
+  private waiting = false;
+
+  arm(): void {
+    this.waiting = true;
+  }
+
+  consume(anyButtonPressed: boolean): boolean {
+    if (!this.waiting) return false;
+    if (!anyButtonPressed) this.waiting = false;
+    return true;
+  }
+}
+
 export function defaultControlIndex(controls: readonly Pick<HTMLElement, "hasAttribute" | "classList">[]): number {
   const preferred = controls.findIndex((control) => control.hasAttribute("data-gamepad-default"));
   if (preferred >= 0) return preferred;
@@ -11,6 +25,7 @@ export class GamepadUiNavigator {
   private frame: number | null = null;
   private previousPressed = new Set<string>();
   private previousAnyPressed = new Set<string>();
+  private readonly releaseGate = new GamepadReleaseGate();
 
   constructor(
     private readonly root: HTMLElement,
@@ -42,7 +57,13 @@ export class GamepadUiNavigator {
         if (button.pressed) anyPressed.add(`${pad.index}:button:${index}`);
       });
     }
+    if (this.releaseGate.consume(anyPressed.size > 0)) {
+      this.previousAnyPressed = anyPressed;
+      this.previousPressed.clear();
+      return;
+    }
     if ([...anyPressed].some((key) => !this.previousAnyPressed.has(key)) && this.dismissOverlay()) {
+      this.releaseGate.arm();
       this.previousAnyPressed = anyPressed;
       this.previousPressed.clear();
       return;

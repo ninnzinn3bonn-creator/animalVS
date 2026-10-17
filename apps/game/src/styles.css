@@ -82,6 +82,19 @@ select:focus-visible {
   transform: scale(1.025);
 }
 
+button.gamepad-selected,
+select.gamepad-selected {
+  outline: 4px solid #007aff;
+  outline-offset: 4px;
+  transform: scale(1.035);
+}
+
+.start-choice-actions button.gamepad-selected {
+  border-color: #007aff;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.2), 0 14px 30px rgba(0, 90, 180, 0.2);
+}
+
 button:disabled {
   cursor: default;
   opacity: 0.36;

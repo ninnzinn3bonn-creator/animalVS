@@ -65,7 +65,7 @@ export class GamepadUiNavigator {
   focusDefaultControl(): void {
     const controls = this.controls();
     if (!controls.length) return;
-    controls[defaultControlIndex(controls)]?.focus();
+    this.focusControl(controls, defaultControlIndex(controls));
   }
 
   private poll(): void {
@@ -118,6 +118,10 @@ export class GamepadUiNavigator {
   }
 
   private controls(): HTMLElement[] {
+    const modeChoices = Array.from(
+      this.root.querySelectorAll<HTMLElement>("#view-start.active [data-mode-choice]:not([disabled])")
+    ).filter((element) => element.offsetParent !== null && !element.closest("[hidden]"));
+    if (modeChoices.length) return modeChoices;
     const selectors = this.root.querySelector<HTMLElement>(".app-menu:not([hidden])")
       ? ".app-menu:not([hidden]) button:not([disabled])"
       : "dialog[open] button:not([disabled]), .view.active button:not([disabled]), .view.active select:not([disabled])";
@@ -131,7 +135,7 @@ export class GamepadUiNavigator {
     if (!controls.length) return;
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const next = movedControlIndex(controls.length, current, defaultControlIndex(controls), direction);
-    controls[next].focus();
+    this.focusControl(controls, next);
   }
 
   private confirm(): void {
@@ -142,7 +146,7 @@ export class GamepadUiNavigator {
     const current = controls.includes(document.activeElement as HTMLElement)
       ? (document.activeElement as HTMLElement)
       : defaultControl ?? controls[0];
-    current.focus();
+    this.focusControl(controls, controls.indexOf(current));
     if (current instanceof HTMLSelectElement) {
       const enabled = Array.from(current.options).filter((option) => !option.disabled);
       const index = Math.max(0, enabled.findIndex((option) => option.value === current.value));
@@ -160,5 +164,12 @@ export class GamepadUiNavigator {
       return;
     }
     this.onBack();
+  }
+
+  private focusControl(controls: HTMLElement[], index: number): void {
+    this.root.querySelectorAll(".gamepad-selected").forEach((element) => element.classList.remove("gamepad-selected"));
+    const control = controls[index];
+    control?.classList.add("gamepad-selected");
+    control?.focus();
   }
 }

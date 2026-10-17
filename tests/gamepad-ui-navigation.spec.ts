@@ -1,12 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultControlIndex,
   gamepadHatDirection,
   gamepadMenuDirection,
   GamepadReleaseGate,
+  GamepadUiNavigator,
   isGenericConfirmButton,
   movedControlIndex
 } from "../apps/game/src/ui/GamepadUiNavigator";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("gamepad UI default focus", () => {
   it("prefers the control that continues the game", () => {
@@ -109,16 +112,81 @@ describe("generic gamepad menu direction", () => {
 
 describe("generic gamepad confirmation", () => {
   it("accepts unknown face-button positions on every UI screen", () => {
-    expect(isGenericConfirmButton(2, 0)).toBe(true);
-    expect(isGenericConfirmButton(3, 0)).toBe(true);
-    expect(isGenericConfirmButton(6, 0)).toBe(true);
+    expect(isGenericConfirmButton(0)).toBe(true);
+    expect(isGenericConfirmButton(1)).toBe(true);
+    expect(isGenericConfirmButton(2)).toBe(true);
+    expect(isGenericConfirmButton(3)).toBe(true);
+    expect(isGenericConfirmButton(6)).toBe(true);
   });
 
-  it("does not turn back or navigation buttons into confirmation", () => {
-    expect(isGenericConfirmButton(0, 0)).toBe(false);
-    expect(isGenericConfirmButton(4, 0)).toBe(false);
-    expect(isGenericConfirmButton(5, 0)).toBe(false);
-    expect(isGenericConfirmButton(12, 0)).toBe(false);
-    expect(isGenericConfirmButton(15, 0)).toBe(false);
+  it("does not turn the dedicated back or navigation buttons into confirmation", () => {
+    expect(isGenericConfirmButton(4)).toBe(false);
+    expect(isGenericConfirmButton(5)).toBe(false);
+    expect(isGenericConfirmButton(8)).toBe(false);
+    expect(isGenericConfirmButton(12)).toBe(false);
+    expect(isGenericConfirmButton(15)).toBe(false);
+  });
+
+  it("does not carry a held Buffalo A button into the next screen", () => {
+    const pressed = { value: false };
+    const pad = {
+      axes: [-1, 3.285714],
+      buttons: Array.from({ length: 16 }, (_, index) => ({
+        get pressed() { return index === 0 && pressed.value; },
+        touched: false,
+        value: 0
+      })),
+      index: 0,
+      mapping: ""
+    } as unknown as Gamepad;
+    const first = fakeControl();
+    const second = fakeControl();
+    let controls = [first];
+    first.click = vi.fn(() => { controls = [second]; });
+    second.click = vi.fn();
+    const root = fakeRoot(() => controls);
+    vi.stubGlobal("navigator", { getGamepads: () => [pad] });
+    vi.stubGlobal("document", { activeElement: null });
+    vi.stubGlobal("HTMLSelectElement", class {});
+    const navigator = new GamepadUiNavigator(root as unknown as HTMLElement, () => false, vi.fn());
+    const poll = () => (navigator as unknown as { poll: () => void }).poll();
+
+    poll();
+    poll();
+    poll();
+    pressed.value = true;
+    poll();
+    poll();
+    expect(first.click).toHaveBeenCalledTimes(1);
+    expect(second.click).not.toHaveBeenCalled();
+    pressed.value = false;
+    poll();
+    pressed.value = true;
+    poll();
+    expect(second.click).toHaveBeenCalledTimes(1);
   });
 });
+
+function fakeControl() {
+  const classes = new Set<string>();
+  return {
+    offsetParent: {},
+    classList: {
+      add: (name: string) => classes.add(name),
+      remove: (name: string) => classes.delete(name),
+      contains: (name: string) => classes.has(name)
+    },
+    hasAttribute: (name: string) => name === "data-gamepad-default",
+    closest: () => null,
+    focus: vi.fn(),
+    click: vi.fn()
+  };
+}
+
+function fakeRoot(controls: () => ReturnType<typeof fakeControl>[]) {
+  return {
+    classList: { contains: () => false },
+    querySelector: () => null,
+    querySelectorAll: (selector: string) => selector === ".gamepad-selected" ? controls() : controls()
+  };
+}

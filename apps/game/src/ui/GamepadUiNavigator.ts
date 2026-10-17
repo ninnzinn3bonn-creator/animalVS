@@ -2,6 +2,12 @@ import { gamepadButtonPressed, gamepadFaceMapping } from "../game/GamepadMapping
 
 type Direction = "previous" | "next";
 
+const navigationButtonIndexes = new Set([4, 5, 12, 13, 14, 15]);
+
+export function isGenericConfirmButton(buttonIndex: number, backButtonIndex: number): boolean {
+  return buttonIndex >= 0 && buttonIndex <= 11 && buttonIndex !== backButtonIndex && !navigationButtonIndexes.has(buttonIndex);
+}
+
 export function gamepadMenuDirection(
   gamepad: Pick<Gamepad, "axes" | "buttons">,
   neutralAxes: readonly number[] = gamepad.axes.map(() => 0)
@@ -115,16 +121,15 @@ export class GamepadUiNavigator {
       const face = gamepadFaceMapping(pad);
       const direction = gamepadMenuDirection(pad, this.neutralAxes.get(pad.index));
       this.edge(pressed, `${pad.index}:move:${direction ?? "idle"}`, direction);
-      if (this.isModeSelectionActive()) {
-        const unknownConfirm = newlyPressed.some((key) => {
-          const index = Number(key.slice(key.lastIndexOf(":") + 1));
-          return index >= 0 && index <= 11 && index !== face.back;
-        });
-        if (unknownConfirm) {
-          this.confirm();
-          this.previousPressed = pressed;
-          return;
-        }
+      const genericConfirm = newlyPressed.some((key) => {
+        if (!key.startsWith(`${pad.index}:button:`)) return false;
+        const index = Number(key.slice(key.lastIndexOf(":") + 1));
+        return isGenericConfirmButton(index, face.back);
+      });
+      if (genericConfirm) {
+        this.confirm();
+        this.previousPressed = pressed;
+        return;
       }
       this.edge(pressed, `${pad.index}:a`, gamepadButtonPressed(pad, face.confirm) ? "confirm" : null);
       this.edge(pressed, `${pad.index}:b`, gamepadButtonPressed(pad, face.back) ? "back" : null);
@@ -152,10 +157,6 @@ export class GamepadUiNavigator {
     return Array.from(this.root.querySelectorAll<HTMLElement>(selectors)).filter(
       (element) => element.offsetParent !== null && !element.closest("[hidden]")
     );
-  }
-
-  private isModeSelectionActive(): boolean {
-    return Boolean(this.root.querySelector("#view-start.active [data-mode-choice]"));
   }
 
   private move(direction: Direction): void {

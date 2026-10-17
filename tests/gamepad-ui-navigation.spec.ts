@@ -3,6 +3,7 @@ import {
   defaultControlIndex,
   gamepadMenuDirection,
   GamepadReleaseGate,
+  isGenericConfirmButton,
   movedControlIndex
 } from "../apps/game/src/ui/GamepadUiNavigator";
 
@@ -72,5 +73,21 @@ describe("generic gamepad menu direction", () => {
     expect(gamepadMenuDirection(pad, [-1, 3.285])).toBeNull();
     expect(gamepadMenuDirection({ ...pad, axes: [1, 3.285] }, [-1, 3.285])).toBe("next");
     expect(gamepadMenuDirection({ ...pad, axes: [-1, -1] }, [-1, 3.285])).toBe("previous");
+  });
+});
+
+describe("generic gamepad confirmation", () => {
+  it("accepts unknown face-button positions on every UI screen", () => {
+    expect(isGenericConfirmButton(2, 0)).toBe(true);
+    expect(isGenericConfirmButton(3, 0)).toBe(true);
+    expect(isGenericConfirmButton(6, 0)).toBe(true);
+  });
+
+  it("does not turn back or navigation buttons into confirmation", () => {
+    expect(isGenericConfirmButton(0, 0)).toBe(false);
+    expect(isGenericConfirmButton(4, 0)).toBe(false);
+    expect(isGenericConfirmButton(5, 0)).toBe(false);
+    expect(isGenericConfirmButton(12, 0)).toBe(false);
+    expect(isGenericConfirmButton(15, 0)).toBe(false);
   });
 });

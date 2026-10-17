@@ -1,5 +1,5 @@
 import type { GameController } from "./GameController";
-import { gamepadButtonPressed, gamepadFaceMapping } from "./GamepadMapping";
+import { gamepadButtonPressed, gamepadDirections, gamepadFaceMapping } from "./GamepadMapping";
 
 export interface SoloGamepadStatus {
   connected: boolean;
@@ -11,6 +11,7 @@ export class SoloGamepadInput {
   private gamepadIndex: number | null = null;
   private previous = new Set<string>();
   private lastMoveAt = 0;
+  private neutralAxes: number[] = [];
 
   constructor(
     private readonly controller: GameController,
@@ -44,6 +45,7 @@ export class SoloGamepadInput {
       }
       this.gamepadIndex = replacement?.index ?? null;
       pad = replacement;
+      this.neutralAxes = replacement ? Array.from(replacement.axes) : [];
       this.previous.clear();
       if (replacement) this.onStatus({ connected: true, label: replacement.id });
     }
@@ -51,8 +53,9 @@ export class SoloGamepadInput {
 
     const down = (index: number) => Boolean(pad?.buttons[index]?.pressed);
     const face = gamepadFaceMapping(pad);
-    const left = down(14) || (pad.axes[0] ?? 0) < -0.6;
-    const right = down(15) || (pad.axes[0] ?? 0) > 0.6;
+    const directions = gamepadDirections(pad.axes, this.neutralAxes);
+    const left = down(14) || directions.left;
+    const right = down(15) || directions.right;
     if ((left || right) && now - this.lastMoveAt >= 90) {
       this.controller.move(left ? -1 : 1);
       this.lastMoveAt = now;
@@ -64,8 +67,8 @@ export class SoloGamepadInput {
       pressed.add(key);
       if (!this.previous.has(key)) action();
     };
-    edge("rotate-left", down(12) || (pad.axes[1] ?? 0) < -0.6, () => this.controller.rotate(-1));
-    edge("rotate-right", down(13) || (pad.axes[1] ?? 0) > 0.6, () => this.controller.rotate(1));
+    edge("rotate-left", down(12) || directions.up, () => this.controller.rotate(-1));
+    edge("rotate-right", down(13) || directions.down, () => this.controller.rotate(1));
     edge("drop", gamepadButtonPressed(pad, face.confirm), () => this.controller.drop());
     edge("pause", down(9), () => this.controller.pauseToggle());
     this.previous = pressed;

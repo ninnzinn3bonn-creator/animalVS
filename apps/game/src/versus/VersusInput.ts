@@ -1,5 +1,5 @@
 import type { PlayerId } from "../game/TurnManager";
-import { gamepadButtonPressed, gamepadFaceMapping } from "../game/GamepadMapping";
+import { gamepadButtonPressed, gamepadDirections, gamepadFaceMapping } from "../game/GamepadMapping";
 
 export type VersusAction = "left" | "right" | "rotate-left" | "rotate-right" | "drop";
 export type InputAssignment = "keyboard:wasd" | "keyboard:arrows" | "screen" | `gamepad:${number}`;
@@ -75,18 +75,18 @@ export function gamepadIndex(assignment: InputAssignment): number {
 }
 
 export function gamepadControlState(
-  gamepad: Pick<Gamepad, "axes" | "buttons"> & Partial<Pick<Gamepad, "mapping">>
+  gamepad: Pick<Gamepad, "axes" | "buttons"> & Partial<Pick<Gamepad, "mapping">>,
+  neutralAxes: readonly number[] = gamepad.axes.map(() => 0)
 ): GamepadControlState {
-  const horizontal = gamepad.axes[0] ?? 0;
-  const vertical = gamepad.axes[1] ?? 0;
+  const directions = gamepadDirections(gamepad.axes, neutralAxes);
   const pressed = (index: number) => Boolean(gamepad.buttons[index]?.pressed);
   const face = gamepadFaceMapping(gamepad);
   const standard = gamepad.mapping === "standard";
   return {
-    left: horizontal < -0.5 || pressed(14),
-    right: horizontal > 0.5 || pressed(15),
-    rotateLeft: vertical < -0.5 || pressed(12) || pressed(4) || pressed(8),
-    rotateRight: vertical > 0.5 || pressed(13) || pressed(5) || (standard && pressed(1)),
+    left: directions.left || pressed(14),
+    right: directions.right || pressed(15),
+    rotateLeft: directions.up || pressed(12) || pressed(4) || pressed(8),
+    rotateRight: directions.down || pressed(13) || pressed(5) || (standard && pressed(1)),
     drop: gamepadButtonPressed(gamepad, face.confirm),
     pause: pressed(9)
   };
@@ -102,6 +102,7 @@ export class VersusInputRouter {
   private active = false;
   private frame: number | null = null;
   private readonly buttonStates = new Map<string, { down: boolean; firstAt: number; lastAt: number }>();
+  private readonly neutralAxes = new Map<number, number[]>();
   private readonly keyHandler = (event: KeyboardEvent) => this.handleKey(event);
   private readonly gamepadChangeHandler = () => this.onGamepadsChanged();
 
@@ -192,7 +193,8 @@ export class VersusInputRouter {
         if (!gamepad?.connected) {
           continue;
         }
-        const controls = gamepadControlState(gamepad);
+        if (!this.neutralAxes.has(gamepad.index)) this.neutralAxes.set(gamepad.index, Array.from(gamepad.axes));
+        const controls = gamepadControlState(gamepad, this.neutralAxes.get(gamepad.index));
         this.updateGamepadAction(player, "left", controls.left, now);
         this.updateGamepadAction(player, "right", controls.right, now);
         this.updateGamepadAction(player, "rotate-left", controls.rotateLeft, now);

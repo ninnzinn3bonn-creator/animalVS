@@ -70,6 +70,14 @@ describe("versus input assignments", () => {
     expect(controls.drop).toBe(false);
   });
 
+  it("uses a Buffalo POV axis for movement and rotation during play", () => {
+    const neutral = [-1, 3.285714];
+    expect(gamepadControlState({ ...fakeGamepad([-1, -0.428571], []), mapping: "" }, neutral).right).toBe(true);
+    expect(gamepadControlState({ ...fakeGamepad([-1, 0.714286], []), mapping: "" }, neutral).left).toBe(true);
+    expect(gamepadControlState({ ...fakeGamepad([-1, -1], []), mapping: "" }, neutral).rotateLeft).toBe(true);
+    expect(gamepadControlState({ ...fakeGamepad([-1, 0.142857], []), mapping: "" }, neutral).rotateRight).toBe(true);
+  });
+
   it("toggles pause once per START press and can toggle again after release", () => {
     let nextFrame: FrameRequestCallback | null = null;
     const gamepad = fullGamepad([0, 0], [9]);

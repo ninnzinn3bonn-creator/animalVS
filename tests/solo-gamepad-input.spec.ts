@@ -53,4 +53,16 @@ describe("solo gamepad input", () => {
     input.poll(100);
     expect(controller.drop).toHaveBeenCalledTimes(1);
   });
+
+  it("uses a Buffalo POV axis during solo play", () => {
+    const controller = {
+      move: vi.fn(), rotate: vi.fn(), drop: vi.fn(), pauseToggle: vi.fn(), setPaused: vi.fn()
+    } as unknown as GameController;
+    let pads: readonly (Gamepad | null)[] = [gamepad([], [-1, 3.285714], "")];
+    const input = new SoloGamepadInput(controller, undefined, () => pads);
+    input.poll(100);
+    pads = [gamepad([], [-1, -0.428571], "")];
+    input.poll(200);
+    expect(controller.move).toHaveBeenCalledWith(1);
+  });
 });

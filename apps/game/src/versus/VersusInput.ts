@@ -17,6 +17,15 @@ export interface GamepadControlState {
   pause: boolean;
 }
 
+export function recommendedVersusAssignments(
+  connectedGamepads: readonly ConnectedGamepad[]
+): Record<PlayerId, InputAssignment> {
+  return {
+    1: connectedGamepads[0] ? `gamepad:${connectedGamepads[0].index}` : "keyboard:wasd",
+    2: connectedGamepads[1] ? `gamepad:${connectedGamepads[1].index}` : "keyboard:arrows"
+  };
+}
+
 export function validateInputAssignments(
   player1: InputAssignment,
   player2: InputAssignment,

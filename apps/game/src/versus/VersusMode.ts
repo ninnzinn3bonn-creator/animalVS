@@ -24,7 +24,7 @@ import {
   type VersusResult
 } from "./VersusCoordinator";
 import type { ConnectedGamepad, InputAssignment, VersusAction } from "./VersusInput";
-import { validateInputAssignments } from "./VersusInput";
+import { recommendedVersusAssignments, validateInputAssignments } from "./VersusInput";
 import {
   VERSUS_ATTACK_EARNED_MESSAGE,
   VERSUS_ATTACK_INCOMING_MESSAGE,
@@ -58,6 +58,7 @@ export class VersusMode implements VersusCoordinatorEvents {
   private readonly attackNoticeTimers: Partial<Record<PlayerId, number>> = {};
   private coordinator!: VersusCoordinator;
   private gamepads: ConnectedGamepad[] = [];
+  private assignmentsTouched = false;
   private currentPhase: VersusPhase = "setup";
 
   constructor(
@@ -232,6 +233,11 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.gamepads = gamepads;
     if (this.selects) {
       this.renderInputOptions();
+      if (this.currentPhase === "setup" && !this.assignmentsTouched) {
+        const recommended = recommendedVersusAssignments(gamepads);
+        this.selects[1].value = recommended[1];
+        this.selects[2].value = recommended[2];
+      }
       this.syncAssignments();
     }
     if (this.currentPhase === "paused") {
@@ -315,6 +321,7 @@ export class VersusMode implements VersusCoordinatorEvents {
     });
     this.root.addEventListener("change", (event) => {
       if ((event.target as HTMLElement).matches("[data-versus-input]")) {
+        this.assignmentsTouched = true;
         this.syncAssignments();
       }
     });

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   gamepadControlState,
   keyboardAction,
+  recommendedVersusAssignments,
   validateInputAssignments,
   VersusInputRouter,
   type ConnectedGamepad
@@ -16,6 +17,20 @@ describe("versus input assignments", () => {
     { index: 0, label: "Controller A" },
     { index: 1, label: "Controller B" }
   ];
+
+  it("assigns two connected controllers to separate players", () => {
+    expect(recommendedVersusAssignments([{ index: 2, label: "Pad A" }, { index: 5, label: "Pad B" }])).toEqual({
+      1: "gamepad:2",
+      2: "gamepad:5"
+    });
+  });
+
+  it("keeps player 2 on keyboard when only one controller is connected", () => {
+    expect(recommendedVersusAssignments([{ index: 3, label: "Pad" }])).toEqual({
+      1: "gamepad:3",
+      2: "keyboard:arrows"
+    });
+  });
 
   it("maps both keyboard profiles to five independent actions", () => {
     expect(keyboardAction("keyboard:wasd", "KeyA")).toBe("left");

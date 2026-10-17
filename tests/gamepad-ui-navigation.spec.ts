@@ -3,7 +3,6 @@ import {
   defaultControlIndex,
   gamepadHatDirection,
   gamepadMenuDirection,
-  GamepadReleaseGate,
   GamepadUiNavigator,
   isGenericConfirmButton,
   movedControlIndex
@@ -30,28 +29,6 @@ describe("gamepad UI default focus", () => {
       classList: { contains: (name: string) => name === "active" && active }
     }));
     expect(defaultControlIndex(controls)).toBe(1);
-  });
-});
-
-describe("gamepad overlay input release", () => {
-  it("blocks the held button and its release before accepting another press", () => {
-    const gate = new GamepadReleaseGate();
-    gate.arm();
-
-    expect(gate.consume(true)).toBe(true);
-    expect(gate.consume(true)).toBe(true);
-    expect(gate.consume(false)).toBe(true);
-    expect(gate.consume(false)).toBe(false);
-    expect(gate.consume(true)).toBe(false);
-  });
-
-  it("requires a release after a screen transition before accepting another press", () => {
-    const gate = new GamepadReleaseGate();
-    gate.arm();
-
-    expect(gate.consume(true)).toBe(true);
-    expect(gate.consume(false)).toBe(true);
-    expect(gate.consume(true)).toBe(false);
   });
 });
 
@@ -189,6 +166,32 @@ describe("generic gamepad confirmation", () => {
     poll();
     expect(dismiss).toHaveBeenCalledTimes(1);
     expect(control.click).not.toHaveBeenCalled();
+  });
+
+  it("does not lock the UI when a cheap controller reports an unrelated button as always active", () => {
+    const confirm = { value: false };
+    const pad = {
+      axes: [-1, 3.285714],
+      buttons: Array.from({ length: 16 }, (_, index) => ({
+        get pressed() { return index === 7 || (index === 0 && confirm.value); },
+        touched: false,
+        get value() { return this.pressed ? 1 : 0; }
+      })),
+      index: 0,
+      mapping: ""
+    } as unknown as Gamepad;
+    const control = fakeControl();
+    vi.stubGlobal("navigator", { getGamepads: () => [pad] });
+    vi.stubGlobal("document", { activeElement: null });
+    vi.stubGlobal("HTMLSelectElement", class {});
+    const navigator = new GamepadUiNavigator(fakeRoot(() => [control]) as unknown as HTMLElement, () => false, vi.fn());
+    const poll = () => (navigator as unknown as { poll: () => void }).poll();
+
+    poll();
+    poll();
+    confirm.value = true;
+    poll();
+    expect(control.click).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -35,20 +35,6 @@ export function gamepadMenuDirection(
   return null;
 }
 
-export class GamepadReleaseGate {
-  private waiting = false;
-
-  arm(): void {
-    this.waiting = true;
-  }
-
-  consume(anyButtonPressed: boolean): boolean {
-    if (!this.waiting) return false;
-    if (!anyButtonPressed) this.waiting = false;
-    return true;
-  }
-}
-
 export function defaultControlIndex(controls: readonly Pick<HTMLElement, "hasAttribute" | "classList">[]): number {
   const preferred = controls.findIndex((control) => control.hasAttribute("data-gamepad-default"));
   if (preferred >= 0) return preferred;
@@ -71,7 +57,7 @@ export function movedControlIndex(
 export class GamepadUiNavigator {
   private frame: number | null = null;
   private previousInputs = new Set<string>();
-  private readonly releaseGate = new GamepadReleaseGate();
+  private readonly blockedInputs = new Set<string>();
   private readonly neutralAxes = new Map<number, number[]>();
   private visibleControls: HTMLElement[] = [];
 
@@ -122,13 +108,12 @@ export class GamepadUiNavigator {
         inputs.add(`${pad.index}:direction:${direction}`);
       }
     }
-    if (this.releaseGate.consume(inputs.size > 0)) {
-      this.previousInputs = inputs;
-      return;
+    for (const blocked of this.blockedInputs) {
+      if (!inputs.has(blocked)) this.blockedInputs.delete(blocked);
     }
-    const newlyPressed = [...inputs].filter((key) => !this.previousInputs.has(key));
+    const newlyPressed = [...inputs].filter((key) => !this.previousInputs.has(key) && !this.blockedInputs.has(key));
     if (newlyPressed.length > 0 && this.dismissOverlay()) {
-      this.releaseGate.arm();
+      this.blockCurrentInputs(inputs);
       this.previousInputs = inputs;
       return;
     }
@@ -141,7 +126,7 @@ export class GamepadUiNavigator {
     if (this.controlsChanged(controls)) {
       this.visibleControls = controls;
       this.focusControl(controls, defaultControlIndex(controls));
-      this.releaseGate.arm();
+      this.blockCurrentInputs(inputs);
       this.previousInputs = inputs;
       return;
     }
@@ -160,13 +145,13 @@ export class GamepadUiNavigator {
       });
       if (genericConfirm) {
         this.confirm();
-        this.releaseGate.arm();
+        this.blockCurrentInputs(inputs);
         this.previousInputs = inputs;
         return;
       }
       if (newlyPressed.includes(`${pad.index}:button:8`)) {
         this.back();
-        this.releaseGate.arm();
+        this.blockCurrentInputs(inputs);
         this.previousInputs = inputs;
         return;
       }
@@ -191,10 +176,16 @@ export class GamepadUiNavigator {
     return controls.length !== this.visibleControls.length || controls.some((control, index) => control !== this.visibleControls[index]);
   }
 
+  private blockCurrentInputs(inputs: ReadonlySet<string>): void {
+    inputs.forEach((input) => this.blockedInputs.add(input));
+  }
+
   private move(direction: Direction): void {
     const controls = this.controls();
     if (!controls.length) return;
-    const current = controls.indexOf(document.activeElement as HTMLElement);
+    const selected = controls.findIndex((control) => control.classList.contains("gamepad-selected"));
+    const focused = controls.indexOf(document.activeElement as HTMLElement);
+    const current = selected >= 0 ? selected : focused;
     const next = movedControlIndex(controls.length, current, defaultControlIndex(controls), direction);
     this.focusControl(controls, next);
   }

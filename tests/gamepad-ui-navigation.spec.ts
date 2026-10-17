@@ -165,6 +165,31 @@ describe("generic gamepad confirmation", () => {
     poll();
     expect(second.click).toHaveBeenCalledTimes(1);
   });
+
+  it("dismisses an explanation overlay with a Buffalo direction input", () => {
+    let hat = 3.285714;
+    const pad = {
+      get axes() { return [-1, hat]; },
+      buttons: Array.from({ length: 16 }, () => ({ pressed: false, touched: false, value: 0 })),
+      index: 0,
+      mapping: ""
+    } as unknown as Gamepad;
+    const control = fakeControl();
+    const dismiss = vi.fn(() => true);
+    vi.stubGlobal("navigator", { getGamepads: () => [pad] });
+    vi.stubGlobal("document", { activeElement: null });
+    vi.stubGlobal("HTMLSelectElement", class {});
+    const navigator = new GamepadUiNavigator(fakeRoot(() => [control]) as unknown as HTMLElement, () => false, vi.fn(), dismiss);
+    const poll = () => (navigator as unknown as { poll: () => void }).poll();
+
+    poll();
+    poll();
+    poll();
+    hat = -0.428571;
+    poll();
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(control.click).not.toHaveBeenCalled();
+  });
 });
 
 function fakeControl() {

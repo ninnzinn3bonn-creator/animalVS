@@ -16,8 +16,9 @@ export function gamepadMenuDirection(
   gamepad: Pick<Gamepad, "axes" | "buttons">,
   neutralAxes: readonly number[] = gamepad.axes.map(() => 0)
 ): Direction | null {
-  if (gamepad.buttons[14]?.pressed || gamepad.buttons[12]?.pressed || gamepad.buttons[4]?.pressed) return "previous";
-  if (gamepad.buttons[15]?.pressed || gamepad.buttons[13]?.pressed || gamepad.buttons[5]?.pressed) return "next";
+  const down = (index: number) => Boolean(gamepad.buttons[index]?.pressed || (gamepad.buttons[index]?.value ?? 0) >= 0.5);
+  if (down(14) || down(12) || down(4)) return "previous";
+  if (down(15) || down(13) || down(5)) return "next";
   for (let index = 0; index < gamepad.axes.length; index += 1) {
     const value = gamepad.axes[index];
     const neutral = neutralAxes[index] ?? 0;
@@ -69,8 +70,7 @@ export function movedControlIndex(
 
 export class GamepadUiNavigator {
   private frame: number | null = null;
-  private previousPressed = new Set<string>();
-  private previousAnyPressed = new Set<string>();
+  private previousInputs = new Set<string>();
   private readonly releaseGate = new GamepadReleaseGate();
   private readonly neutralAxes = new Map<number, number[]>();
   private visibleControls: HTMLElement[] = [];
@@ -104,42 +104,8 @@ export class GamepadUiNavigator {
 
   private poll(): void {
     const gamepads = navigator.getGamepads?.() ?? [];
-    const anyPressed = new Set<string>();
-    for (const pad of gamepads) {
-      if (!pad) continue;
-      pad.buttons.forEach((button, index) => {
-        if (button.pressed) anyPressed.add(`${pad.index}:button:${index}`);
-      });
-    }
-    if (this.releaseGate.consume(anyPressed.size > 0)) {
-      this.previousAnyPressed = anyPressed;
-      this.previousPressed.clear();
-      return;
-    }
-    const newlyPressed = [...anyPressed].filter((key) => !this.previousAnyPressed.has(key));
-    if (newlyPressed.length > 0 && this.dismissOverlay()) {
-      this.releaseGate.arm();
-      this.previousAnyPressed = anyPressed;
-      this.previousPressed.clear();
-      return;
-    }
-    this.previousAnyPressed = anyPressed;
-    if (this.isGameplayActive()) {
-      this.previousPressed.clear();
-      this.visibleControls = [];
-      return;
-    }
-    const controls = this.controls();
-    if (this.controlsChanged(controls)) {
-      this.visibleControls = controls;
-      this.focusControl(controls, defaultControlIndex(controls));
-      this.previousPressed.clear();
-      // A confirm press often changes the whole screen. Do not let that same held
-      // button activate the newly focused capture or skip action on the next frame.
-      this.releaseGate.arm();
-      return;
-    }
-    const pressed = new Set<string>();
+    const inputs = new Set<string>();
+    const directions = new Map<number, Direction>();
     for (const pad of gamepads) {
       if (!pad) continue;
       if (!this.neutralAxes.has(pad.index)) this.neutralAxes.set(pad.index, Array.from(pad.axes));
@@ -147,8 +113,46 @@ export class GamepadUiNavigator {
       pad.axes.forEach((value, index) => {
         if (value > 1.5) neutral[index] = value;
       });
+      pad.buttons.forEach((button, index) => {
+        if (button.pressed || button.value >= 0.5) inputs.add(`${pad.index}:button:${index}`);
+      });
       const direction = gamepadMenuDirection(pad, neutral);
-      this.edge(pressed, `${pad.index}:move:${direction ?? "idle"}`, direction);
+      if (direction) {
+        directions.set(pad.index, direction);
+        inputs.add(`${pad.index}:direction:${direction}`);
+      }
+    }
+    if (this.releaseGate.consume(inputs.size > 0)) {
+      this.previousInputs = inputs;
+      return;
+    }
+    const newlyPressed = [...inputs].filter((key) => !this.previousInputs.has(key));
+    if (newlyPressed.length > 0 && this.dismissOverlay()) {
+      this.releaseGate.arm();
+      this.previousInputs = inputs;
+      return;
+    }
+    if (this.isGameplayActive()) {
+      this.previousInputs = inputs;
+      this.visibleControls = [];
+      return;
+    }
+    const controls = this.controls();
+    if (this.controlsChanged(controls)) {
+      this.visibleControls = controls;
+      this.focusControl(controls, defaultControlIndex(controls));
+      this.releaseGate.arm();
+      this.previousInputs = inputs;
+      return;
+    }
+    for (const pad of gamepads) {
+      if (!pad) continue;
+      const direction = directions.get(pad.index);
+      if (direction && newlyPressed.includes(`${pad.index}:direction:${direction}`)) {
+        this.move(direction);
+        this.previousInputs = inputs;
+        return;
+      }
       const genericConfirm = newlyPressed.some((key) => {
         if (!key.startsWith(`${pad.index}:button:`)) return false;
         const index = Number(key.slice(key.lastIndexOf(":") + 1));
@@ -157,21 +161,17 @@ export class GamepadUiNavigator {
       if (genericConfirm) {
         this.confirm();
         this.releaseGate.arm();
-        this.previousPressed = pressed;
+        this.previousInputs = inputs;
         return;
       }
-      this.edge(pressed, `${pad.index}:back`, Boolean(pad.buttons[8]?.pressed) ? "back" : null);
+      if (newlyPressed.includes(`${pad.index}:button:8`)) {
+        this.back();
+        this.releaseGate.arm();
+        this.previousInputs = inputs;
+        return;
+      }
     }
-    this.previousPressed = pressed;
-  }
-
-  private edge(pressed: Set<string>, key: string, action: Direction | "confirm" | "back" | null): void {
-    if (!action) return;
-    pressed.add(key);
-    if (this.previousPressed.has(key)) return;
-    if (action === "confirm") this.confirm();
-    else if (action === "back") this.back();
-    else this.move(action);
+    this.previousInputs = inputs;
   }
 
   private controls(): HTMLElement[] {

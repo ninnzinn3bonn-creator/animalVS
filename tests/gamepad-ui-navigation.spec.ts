@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultControlIndex,
+  gamepadHatDirection,
   gamepadMenuDirection,
   GamepadReleaseGate,
   isGenericConfirmButton,
@@ -73,6 +74,23 @@ describe("generic gamepad menu direction", () => {
     expect(gamepadMenuDirection(pad, [-1, 3.285])).toBeNull();
     expect(gamepadMenuDirection({ ...pad, axes: [1, 3.285] }, [-1, 3.285])).toBe("next");
     expect(gamepadMenuDirection({ ...pad, axes: [-1, -1] }, [-1, 3.285])).toBe("previous");
+  });
+
+  it("decodes the 8-way POV axis used by Buffalo retro controllers", () => {
+    const neutral = [-1, 3.285714];
+    const pad = (hat: number) => ({ axes: [-1, hat], buttons: buttons() });
+    expect(gamepadMenuDirection(pad(3.285714), neutral)).toBeNull();
+    expect(gamepadMenuDirection(pad(-1), neutral)).toBe("previous");
+    expect(gamepadMenuDirection(pad(-0.428571), neutral)).toBe("next");
+    expect(gamepadMenuDirection(pad(0.142857), neutral)).toBe("next");
+    expect(gamepadMenuDirection(pad(0.714286), neutral)).toBe("previous");
+  });
+
+  it("maps Buffalo POV diagonals consistently for menu navigation", () => {
+    expect(gamepadHatDirection(-0.714286)).toBe("next");
+    expect(gamepadHatDirection(-0.142857)).toBe("next");
+    expect(gamepadHatDirection(0.428571)).toBe("previous");
+    expect(gamepadHatDirection(1)).toBe("previous");
   });
 });
 

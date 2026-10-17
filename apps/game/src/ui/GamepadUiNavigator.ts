@@ -8,6 +8,12 @@ export function isGenericConfirmButton(buttonIndex: number, backButtonIndex: num
   return buttonIndex >= 0 && buttonIndex <= 11 && buttonIndex !== backButtonIndex && !navigationButtonIndexes.has(buttonIndex);
 }
 
+export function gamepadHatDirection(value: number): Direction | null {
+  if (value < -1.05 || value > 1.05) return null;
+  const sector = Math.max(0, Math.min(7, Math.round((value + 1) * 3.5)));
+  return sector === 0 || sector >= 5 ? "previous" : "next";
+}
+
 export function gamepadMenuDirection(
   gamepad: Pick<Gamepad, "axes" | "buttons">,
   neutralAxes: readonly number[] = gamepad.axes.map(() => 0)
@@ -15,7 +21,16 @@ export function gamepadMenuDirection(
   if (gamepad.buttons[14]?.pressed || gamepad.buttons[12]?.pressed || gamepad.buttons[4]?.pressed) return "previous";
   if (gamepad.buttons[15]?.pressed || gamepad.buttons[13]?.pressed || gamepad.buttons[5]?.pressed) return "next";
   for (let index = 0; index < gamepad.axes.length; index += 1) {
-    const delta = gamepad.axes[index] - (neutralAxes[index] ?? 0);
+    const value = gamepad.axes[index];
+    const neutral = neutralAxes[index] ?? 0;
+    // Buffalo and similar retro USB pads expose the D-pad as an 8-way POV axis.
+    // Chromium reports its neutral position around 3.2857 and directions from -1 to 1.
+    if (neutral > 1.5) {
+      const direction = gamepadHatDirection(value);
+      if (direction) return direction;
+      continue;
+    }
+    const delta = value - neutral;
     if (Math.abs(delta) >= 0.35) return delta < 0 ? "previous" : "next";
   }
   return null;

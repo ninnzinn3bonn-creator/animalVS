@@ -2,6 +2,14 @@ import { gamepadButtonPressed, gamepadFaceMapping } from "../game/GamepadMapping
 
 type Direction = "previous" | "next";
 
+export function gamepadMenuDirection(gamepad: Pick<Gamepad, "axes" | "buttons">): Direction | null {
+  if (gamepad.buttons[14]?.pressed || gamepad.buttons[12]?.pressed || gamepad.buttons[4]?.pressed) return "previous";
+  if (gamepad.buttons[15]?.pressed || gamepad.buttons[13]?.pressed || gamepad.buttons[5]?.pressed) return "next";
+  const activeAxis = gamepad.axes.find((value) => Math.abs(value) >= 0.35 && Math.abs(value) <= 1.01);
+  if (activeAxis === undefined) return null;
+  return activeAxis < 0 ? "previous" : "next";
+}
+
 export class GamepadReleaseGate {
   private waiting = false;
 
@@ -82,7 +90,8 @@ export class GamepadUiNavigator {
       this.previousPressed.clear();
       return;
     }
-    if ([...anyPressed].some((key) => !this.previousAnyPressed.has(key)) && this.dismissOverlay()) {
+    const newlyPressed = [...anyPressed].filter((key) => !this.previousAnyPressed.has(key));
+    if (newlyPressed.length > 0 && this.dismissOverlay()) {
       this.releaseGate.arm();
       this.previousAnyPressed = anyPressed;
       this.previousPressed.clear();
@@ -97,11 +106,18 @@ export class GamepadUiNavigator {
     for (const pad of gamepads) {
       if (!pad) continue;
       const face = gamepadFaceMapping(pad);
-      const left = Boolean(pad.buttons[14]?.pressed) || (pad.axes[0] ?? 0) < -0.6;
-      const right = Boolean(pad.buttons[15]?.pressed) || (pad.axes[0] ?? 0) > 0.6;
-      const up = Boolean(pad.buttons[12]?.pressed) || (pad.axes[1] ?? 0) < -0.6;
-      const down = Boolean(pad.buttons[13]?.pressed) || (pad.axes[1] ?? 0) > 0.6;
-      this.edge(pressed, `${pad.index}:move`, left || up ? "previous" : right || down ? "next" : null);
+      this.edge(pressed, `${pad.index}:move`, gamepadMenuDirection(pad));
+      if (this.isModeSelectionActive()) {
+        const unknownConfirm = newlyPressed.some((key) => {
+          const index = Number(key.slice(key.lastIndexOf(":") + 1));
+          return index >= 0 && index <= 11 && index !== face.back;
+        });
+        if (unknownConfirm) {
+          this.confirm();
+          this.previousPressed = pressed;
+          return;
+        }
+      }
       this.edge(pressed, `${pad.index}:a`, gamepadButtonPressed(pad, face.confirm) ? "confirm" : null);
       this.edge(pressed, `${pad.index}:b`, gamepadButtonPressed(pad, face.back) ? "back" : null);
     }
@@ -128,6 +144,10 @@ export class GamepadUiNavigator {
     return Array.from(this.root.querySelectorAll<HTMLElement>(selectors)).filter(
       (element) => element.offsetParent !== null && !element.closest("[hidden]")
     );
+  }
+
+  private isModeSelectionActive(): boolean {
+    return Boolean(this.root.querySelector("#view-start.active [data-mode-choice]"));
   }
 
   private move(direction: Direction): void {

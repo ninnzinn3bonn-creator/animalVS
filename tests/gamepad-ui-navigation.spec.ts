@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { defaultControlIndex, GamepadReleaseGate, movedControlIndex } from "../apps/game/src/ui/GamepadUiNavigator";
+import {
+  defaultControlIndex,
+  gamepadMenuDirection,
+  GamepadReleaseGate,
+  movedControlIndex
+} from "../apps/game/src/ui/GamepadUiNavigator";
 
 describe("gamepad UI default focus", () => {
   it("prefers the control that continues the game", () => {
@@ -43,5 +48,22 @@ describe("gamepad choice navigation", () => {
 
   it("moves left from the preferred choice and wraps around", () => {
     expect(movedControlIndex(2, -1, 0, "previous")).toBe(1);
+  });
+});
+
+describe("generic gamepad menu direction", () => {
+  const buttons = (pressed: number[] = []) =>
+    Array.from({ length: 16 }, (_, index) => ({ pressed: pressed.includes(index), touched: false, value: 0 }));
+
+  it("supports standard d-pad buttons and shoulder buttons", () => {
+    expect(gamepadMenuDirection({ axes: [], buttons: buttons([14]) })).toBe("previous");
+    expect(gamepadMenuDirection({ axes: [], buttons: buttons([15]) })).toBe("next");
+    expect(gamepadMenuDirection({ axes: [], buttons: buttons([4]) })).toBe("previous");
+    expect(gamepadMenuDirection({ axes: [], buttons: buttons([5]) })).toBe("next");
+  });
+
+  it("uses any active controller axis for non-standard retro pads", () => {
+    expect(gamepadMenuDirection({ axes: [0, 0, -1], buttons: buttons() })).toBe("previous");
+    expect(gamepadMenuDirection({ axes: [0, 0, 0.72], buttons: buttons() })).toBe("next");
   });
 });

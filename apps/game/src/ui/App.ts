@@ -23,6 +23,7 @@ import {
 import type { GameMusic } from "../audio/GameMusic";
 import type { CharacterDefinition } from "../character/CharacterTypes";
 import { CaptureCooldown } from "../capture/CaptureCooldown";
+import { captureCountdownIntervalMs, captureCountdownValues } from "../capture/CaptureCountdown";
 import { captureFrameSize } from "../capture/CaptureFrame";
 import { captureDestination, type CaptureMode } from "../capture/CaptureFlow";
 import { serviceEndpoints } from "../config/services";
@@ -781,6 +782,11 @@ export class AppUi implements GameHud {
       this.closeMenu();
       return;
     }
+    if (this.currentView === "capture" && !this.captureReviewEl.hidden) {
+      this.clearCaptureReview();
+      this.setCaptureStatus("info", "ポーズを きめて、もういちど さつえいしてね。");
+      return;
+    }
     if (this.currentView === "start") this.switchView("title");
     else if (this.currentView === "capture") this.switchView("start");
     else if (this.currentView !== "title") this.switchView("start");
@@ -1085,10 +1091,10 @@ export class AppUi implements GameHud {
   }
 
   private async runCaptureCountdown(): Promise<void> {
-    for (const count of [3, 2, 1]) {
+    for (const count of captureCountdownValues) {
       this.captureCountdownEl.textContent = String(count);
       this.captureCountdownEl.classList.add("show");
-      await new Promise((resolve) => window.setTimeout(resolve, 700));
+      await new Promise((resolve) => window.setTimeout(resolve, captureCountdownIntervalMs));
     }
     this.captureCountdownEl.textContent = "パシャリ";
     this.captureFlashEl.classList.add("show");

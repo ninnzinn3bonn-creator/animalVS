@@ -136,6 +136,10 @@ export class GamepadUiNavigator {
       this.visibleControls = controls;
       this.focusControl(controls, defaultControlIndex(controls));
       this.previousPressed.clear();
+      // A confirm press often changes the whole screen. Do not let that same held
+      // button activate the newly focused capture or skip action on the next frame.
+      this.releaseGate.arm();
+      return;
     }
     const pressed = new Set<string>();
     for (const pad of gamepads) {

@@ -41,6 +41,15 @@ describe("gamepad overlay input release", () => {
     expect(gate.consume(false)).toBe(false);
     expect(gate.consume(true)).toBe(false);
   });
+
+  it("requires a release after a screen transition before accepting another press", () => {
+    const gate = new GamepadReleaseGate();
+    gate.arm();
+
+    expect(gate.consume(true)).toBe(true);
+    expect(gate.consume(false)).toBe(true);
+    expect(gate.consume(true)).toBe(false);
+  });
 });
 
 describe("gamepad choice navigation", () => {

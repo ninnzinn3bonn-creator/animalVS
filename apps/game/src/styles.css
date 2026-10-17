@@ -2045,6 +2045,18 @@ input::placeholder {
   box-shadow: 0 8px 22px rgba(0, 122, 255, 0.22), 0 1px 0 rgba(255, 255, 255, 0.28) inset;
 }
 
+.camera-actions .capture-shot-button {
+  min-height: 62px;
+  border-width: 2px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.camera-actions .capture-shot-button .lucide {
+  width: 25px;
+  height: 25px;
+}
+
 .camera-actions .primary-action:hover {
   background: var(--system-blue-pressed);
 }

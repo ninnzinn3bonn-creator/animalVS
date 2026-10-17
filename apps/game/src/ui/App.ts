@@ -246,7 +246,7 @@ export class AppUi implements GameHud {
               </button>
               <div class="camera-actions">
                 <button type="button" data-action="camera-start"><i data-lucide="video"></i><span>カメラを起動</span></button>
-                <button class="primary-action" type="button" data-action="camera-shot" data-gamepad-default><i data-lucide="camera"></i><span>撮影する</span></button>
+                <button class="primary-action capture-shot-button" type="button" data-action="camera-shot" data-gamepad-default><i data-lucide="camera"></i><span>撮影を行う</span></button>
               </div>
             </div>
             <form class="capture-form">
@@ -1166,7 +1166,7 @@ export class AppUi implements GameHud {
         ? "送信中"
         : cooldownSeconds > 0
           ? `再撮影まで${cooldownSeconds}秒`
-          : "撮影する";
+          : "撮影を行う";
     }
   }
 

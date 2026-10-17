@@ -103,6 +103,8 @@ export class AppUi implements GameHud {
   private rosterSignature = "";
   private captureSession: CaptureSession = { mode: "standalone", player: 1, characterIds: {}, skipped: {} };
   private gamepadNavigator: GamepadUiNavigator | null = null;
+  private soloGamepadActiveHandler: ((active: boolean) => void) | null = null;
+  private soloGamepadActive = false;
   private guideEl!: HTMLElement;
   private guideTextEl!: HTMLElement;
   private guideDismissCallback: (() => void) | null = null;
@@ -413,6 +415,11 @@ export class AppUi implements GameHud {
     this.controller = controller;
   }
 
+  setSoloGamepadActiveHandler(handler: (active: boolean) => void): void {
+    this.soloGamepadActiveHandler = handler;
+    this.updateSoloGamepadActivity();
+  }
+
   setVersusMode(versusMode: VersusMode): void {
     this.versusMode = versusMode;
   }
@@ -460,6 +467,7 @@ export class AppUi implements GameHud {
     resultReason?: ResultReason;
   }): void {
     this.soloMode = state.mode;
+    this.updateSoloGamepadActivity();
     this.music.setActive("solo", this.currentView === "game" && state.mode === "playing");
     this.timerEl.textContent = this.formatTime(state.remainingMs);
     this.nextEl.textContent = state.nextName;
@@ -652,6 +660,7 @@ export class AppUi implements GameHud {
       this.versusMode?.pauseForNavigation();
     }
     this.currentView = view;
+    this.updateSoloGamepadActivity();
     this.music.setActive("solo", view === "game" && this.soloMode === "playing");
     this.root.classList.toggle("title-view", view === "title");
     this.root.classList.toggle("start-view", view === "start");
@@ -665,6 +674,13 @@ export class AppUi implements GameHud {
     if (view === "start") this.showGuide(guideContent.mode);
     if (view === "game") this.showGuide(guideContent.soloGame);
     if (view === "capture") this.showCaptureGuide();
+  }
+
+  private updateSoloGamepadActivity(): void {
+    const active = this.currentView === "game" && this.soloMode === "playing";
+    if (active === this.soloGamepadActive) return;
+    this.soloGamepadActive = active;
+    this.soloGamepadActiveHandler?.(active);
   }
 
   private beginCaptureSession(mode: CaptureMode): void {

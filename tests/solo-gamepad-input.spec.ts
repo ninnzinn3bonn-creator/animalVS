@@ -20,11 +20,14 @@ describe("solo gamepad input", () => {
     const controller = {
       move: vi.fn(), rotate: vi.fn(), drop: vi.fn(), pauseToggle: vi.fn(), setPaused: vi.fn()
     } as unknown as GameController;
-    let pads: readonly (Gamepad | null)[] = [gamepad([0])];
+    let pads: readonly (Gamepad | null)[] = [gamepad([])];
     const input = new SoloGamepadInput(controller, undefined, () => pads);
+    input.setActive(true);
 
     input.poll(100);
+    pads = [gamepad([0])];
     input.poll(200);
+    input.poll(250);
     pads = [gamepad([])];
     input.poll(300);
     pads = [gamepad([0])];
@@ -39,6 +42,7 @@ describe("solo gamepad input", () => {
     } as unknown as GameController;
     let pads: readonly (Gamepad | null)[] = [gamepad()];
     const input = new SoloGamepadInput(controller, undefined, () => pads);
+    input.setActive(true);
     input.poll(100);
     pads = [];
     input.poll(200);
@@ -49,8 +53,12 @@ describe("solo gamepad input", () => {
     const controller = {
       move: vi.fn(), rotate: vi.fn(), drop: vi.fn(), pauseToggle: vi.fn(), setPaused: vi.fn()
     } as unknown as GameController;
-    const input = new SoloGamepadInput(controller, undefined, () => [gamepad([1], [0, 0], "")]);
+    let pads: readonly (Gamepad | null)[] = [gamepad([], [0, 0], "")];
+    const input = new SoloGamepadInput(controller, undefined, () => pads);
+    input.setActive(true);
     input.poll(100);
+    pads = [gamepad([1], [0, 0], "")];
+    input.poll(200);
     expect(controller.drop).toHaveBeenCalledTimes(1);
   });
 
@@ -60,9 +68,37 @@ describe("solo gamepad input", () => {
     } as unknown as GameController;
     let pads: readonly (Gamepad | null)[] = [gamepad([], [-1, 3.285714], "")];
     const input = new SoloGamepadInput(controller, undefined, () => pads);
+    input.setActive(true);
     input.poll(100);
     pads = [gamepad([], [-1, -0.428571], "")];
     input.poll(200);
     expect(controller.move).toHaveBeenCalledWith(1);
+  });
+
+  it("ignores gameplay controls outside the active 1P game", () => {
+    const controller = {
+      move: vi.fn(), rotate: vi.fn(), drop: vi.fn(), pauseToggle: vi.fn(), setPaused: vi.fn()
+    } as unknown as GameController;
+    const input = new SoloGamepadInput(controller, undefined, () => [gamepad([0], [1, 0])]);
+    input.poll(100);
+    expect(controller.move).not.toHaveBeenCalled();
+    expect(controller.drop).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse the UI confirm press as the first drop", () => {
+    const controller = {
+      move: vi.fn(), rotate: vi.fn(), drop: vi.fn(), pauseToggle: vi.fn(), setPaused: vi.fn()
+    } as unknown as GameController;
+    let pads: readonly (Gamepad | null)[] = [gamepad([0])];
+    const input = new SoloGamepadInput(controller, undefined, () => pads);
+    input.setActive(true);
+    input.poll(100);
+    input.poll(200);
+    expect(controller.drop).not.toHaveBeenCalled();
+    pads = [gamepad([])];
+    input.poll(300);
+    pads = [gamepad([0])];
+    input.poll(400);
+    expect(controller.drop).toHaveBeenCalledTimes(1);
   });
 });

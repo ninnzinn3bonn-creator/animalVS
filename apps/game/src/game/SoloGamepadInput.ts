@@ -8,6 +8,8 @@ export interface SoloGamepadStatus {
 
 export class SoloGamepadInput {
   private frame: number | null = null;
+  private active = false;
+  private needsActivationBaseline = false;
   private gamepadIndex: number | null = null;
   private previous = new Set<string>();
   private lastMoveAt = 0;
@@ -34,6 +36,13 @@ export class SoloGamepadInput {
     this.frame = null;
   }
 
+  setActive(active: boolean): void {
+    if (this.active === active) return;
+    this.active = active;
+    this.previous.clear();
+    this.needsActivationBaseline = active;
+  }
+
   poll(now = performance.now()): void {
     const pads = this.getGamepads();
     let pad = this.gamepadIndex === null ? null : pads[this.gamepadIndex];
@@ -56,6 +65,26 @@ export class SoloGamepadInput {
     const directions = gamepadDirections(pad.axes, this.neutralAxes);
     const left = down(14) || directions.left;
     const right = down(15) || directions.right;
+    const rotateLeft = down(12) || directions.up;
+    const rotateRight = down(13) || directions.down;
+    const drop = gamepadButtonPressed(pad, face.confirm);
+    const pause = down(9);
+    const activeInputs = new Set<string>();
+    if (left) activeInputs.add("left");
+    if (right) activeInputs.add("right");
+    if (rotateLeft) activeInputs.add("rotate-left");
+    if (rotateRight) activeInputs.add("rotate-right");
+    if (drop) activeInputs.add("drop");
+    if (pause) activeInputs.add("pause");
+    if (!this.active) {
+      this.previous = activeInputs;
+      return;
+    }
+    if (this.needsActivationBaseline) {
+      this.previous = activeInputs;
+      this.needsActivationBaseline = false;
+      return;
+    }
     if ((left || right) && now - this.lastMoveAt >= 90) {
       this.controller.move(left ? -1 : 1);
       this.lastMoveAt = now;
@@ -67,10 +96,10 @@ export class SoloGamepadInput {
       pressed.add(key);
       if (!this.previous.has(key)) action();
     };
-    edge("rotate-left", down(12) || directions.up, () => this.controller.rotate(-1));
-    edge("rotate-right", down(13) || directions.down, () => this.controller.rotate(1));
-    edge("drop", gamepadButtonPressed(pad, face.confirm), () => this.controller.drop());
-    edge("pause", down(9), () => this.controller.pauseToggle());
+    edge("rotate-left", rotateLeft, () => this.controller.rotate(-1));
+    edge("rotate-right", rotateRight, () => this.controller.rotate(1));
+    edge("drop", drop, () => this.controller.drop());
+    edge("pause", pause, () => this.controller.pauseToggle());
     this.previous = pressed;
   }
 }

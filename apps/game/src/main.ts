@@ -35,6 +35,7 @@ controller.start();
 const soloGamepad = new SoloGamepadInput(controller, ({ connected }) => {
   if (!connected) ui.notify("コントローラーが はずれたので、ゲームを とめました");
 });
+ui.setSoloGamepadActiveHandler((active) => soloGamepad.setActive(active));
 soloGamepad.connect();
 
 const versusRoot = document.getElementById("versus-root");

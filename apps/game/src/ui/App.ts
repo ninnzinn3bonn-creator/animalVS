@@ -130,9 +130,7 @@ export class AppUi implements GameHud {
               <i data-lucide="menu"></i>
             </button>
             <nav id="app-menu" class="app-menu" aria-label="メインメニュー" hidden>
-              <button type="button" data-mode-choice="solo"><i data-lucide="gamepad-2"></i><span>1人で遊ぶ</span></button>
               <button type="button" data-mode-choice="versus"><i data-lucide="swords"></i><span>2人で対戦</span></button>
-              <button type="button" data-view="capture"><i data-lucide="camera"></i><span>キャラ撮影</span></button>
               <button type="button" data-view="characters"><i data-lucide="users"></i><span>キャラクター</span></button>
               <button type="button" data-action="music-toggle" aria-pressed="true"><i data-lucide="volume-2"></i><span data-music-label>音楽 オン</span></button>
               <button class="destructive" type="button" data-action="restart"><i data-lucide="refresh-ccw"></i><span>ゲームをリセット</span></button>
@@ -148,6 +146,7 @@ export class AppUi implements GameHud {
               <img class="title-logo" src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
               <span class="title-tap-backdrop" aria-hidden="true"></span>
               <img class="title-tap-prompt" src="/assets/backgrounds/tap-prompt-v1.png" alt="タップしてね" />
+              <span class="event-title-message">ふたりで あそぼう！<small>ひとりできたら おともだちや スタッフを よんでね</small></span>
             </button>
             <img class="title-menu-callout" src="/assets/backgrounds/menu-callout-v1.png" alt="メニュー" />
           </div>
@@ -163,15 +162,14 @@ export class AppUi implements GameHud {
               <img src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
               <h2>あそびかた</h2>
             </div>
-            <p class="start-howto">しゃしんを とると、あなたが キャラクターになって ゲームに とうじょうするよ！</p>
+            <div class="event-howto">
+              <strong>しゃしんに うつった ふたりが キャラクターになるよ！</strong>
+              <span>じぶんたちを たかく つんだほうの かち！</span>
+            </div>
             <div class="start-choice-actions" aria-label="遊び方を選択">
-              <button type="button" data-mode-choice="solo" data-gamepad-default>
-                <i data-lucide="gamepad-2"></i>
-                <span><strong>1人で遊ぶ</strong><small>写真撮影からスタート</small></span>
-              </button>
-              <button type="button" data-mode-choice="versus">
+              <button type="button" data-mode-choice="versus" data-gamepad-default>
                 <i data-lucide="swords"></i>
-                <span><strong>2人で対戦</strong><small>2人を順番に撮影</small></span>
+                <span><strong>ふたりで たいせん！</strong><small>ふたりを じゅんばんに さつえいするよ</small></span>
               </button>
             </div>
           </div>
@@ -226,7 +224,7 @@ export class AppUi implements GameHud {
 
         <section class="view" id="view-capture">
           <div class="capture-grid">
-            <h2 id="capture-heading" class="capture-heading">キャラ撮影</h2>
+            <h2 id="capture-heading" class="capture-heading">キャラさつえい</h2>
             <div class="camera-box">
               <video id="camera-preview" autoplay playsinline muted></video>
               <div class="body-guide" aria-hidden="true"><span></span></div>
@@ -234,8 +232,8 @@ export class AppUi implements GameHud {
               <div id="capture-review" class="capture-review" hidden>
                 <img id="capture-review-image" alt="撮影した写真の確認" />
                 <div class="capture-review-actions">
-                  <button type="button" data-action="camera-retake"><i data-lucide="refresh-ccw"></i><span>撮り直す</span></button>
-                  <button class="primary-action" type="button" data-action="camera-register" data-gamepad-default><i data-lucide="save"></i><span>この写真を登録</span></button>
+                  <button type="button" data-action="camera-retake"><i data-lucide="refresh-ccw"></i><span>とりなおす</span></button>
+                  <button class="primary-action" type="button" data-action="camera-register" data-gamepad-default><i data-lucide="save"></i><span>これで つくる</span></button>
                 </div>
               </div>
               <button
@@ -249,7 +247,7 @@ export class AppUi implements GameHud {
               </button>
               <div class="camera-actions">
                 <button type="button" data-action="camera-start"><i data-lucide="video"></i><span>カメラを起動</span></button>
-                <button class="primary-action capture-shot-button" type="button" data-action="camera-shot" data-gamepad-default><i data-lucide="camera"></i><span>撮影を行う</span></button>
+                <button class="primary-action capture-shot-button" type="button" data-action="camera-shot" data-gamepad-default><i data-lucide="camera"></i><span>しゃしんを とる</span></button>
               </div>
             </div>
             <form class="capture-form">
@@ -262,12 +260,11 @@ export class AppUi implements GameHud {
               <div id="capture-offline-actions" class="capture-offline-actions" hidden>
                 <button type="button" data-action="capture-retry"><i data-lucide="refresh-ccw"></i><span>接続を再確認</span></button>
               </div>
-              <button class="capture-skip" type="button" data-action="capture-skip" data-gamepad-default><i data-lucide="chevron-right"></i><span>撮影をスキップ</span></button>
+              <button class="capture-skip" type="button" data-action="capture-skip" data-gamepad-default><i data-lucide="chevron-right"></i><span>キャラづくりを スキップ</span></button>
               <div id="capture-complete" class="capture-complete" hidden>
-                <strong>キャラクターができました！</strong>
+                <strong>キャラが できたよ！</strong>
                 <div>
-                  <button type="button" data-view="game" data-gamepad-default><i data-lucide="gamepad-2"></i><span>1人で遊ぶ</span></button>
-                  <button type="button" data-view="versus"><i data-lucide="swords"></i><span>2人で対戦</span></button>
+                  <button type="button" data-mode-choice="versus" data-gamepad-default><i data-lucide="swords"></i><span>ふたりで たいせん</span></button>
                 </div>
               </div>
             </form>
@@ -694,15 +691,17 @@ export class AppUi implements GameHud {
     this.captureCompleteEl.hidden = true;
     this.captureHeadingEl.textContent =
       this.captureSession.mode === "versus"
-        ? `Player ${this.captureSession.player} のキャラ撮影`
+        ? this.captureSession.player === 1
+          ? "ひだりの ひとを さつえい"
+          : "みぎの ひとを さつえい"
         : this.captureSession.mode === "solo"
-          ? "1人用キャラ撮影"
-          : "キャラ撮影";
+          ? "ひとりで さつえい"
+          : "キャラさつえい";
     this.setCaptureStatus(
       "info",
       this.captureAvailable
-        ? "好きなポーズで全身を写してください。撮影はスキップできます。"
-        : "画像処理は現在停止中です。撮影をスキップしてゲームへ進めます。"
+        ? "すきな ポーズで ぜんしんを うつしてね。スキップも できるよ。"
+        : "いまは キャラを つくれないよ。スキップして ゲームへ すすめるよ。"
     );
   }
 
@@ -770,8 +769,11 @@ export class AppUi implements GameHud {
       this.captureGenerationTitleEl.textContent = "キャラクターを つくっているよ";
       this.captureGenerationMessageEl.innerHTML = "10びょうくらい まってね<br>がめんに さわらないでね";
     } else if (state === "success") {
-      this.captureGenerationTitleEl.textContent = "できました！";
-      this.captureGenerationMessageEl.textContent = "どれか ボタンを おしてね";
+      this.captureGenerationTitleEl.textContent = "キャラが できたよ！";
+      this.captureGenerationMessageEl.textContent =
+        this.captureSession.mode === "versus" && this.captureSession.player === 1
+          ? "どれか ボタンを おして つぎの ひとへ"
+          : "どれか ボタンを おして ゲームへ";
     } else {
       this.captureGenerationTitleEl.textContent = "うまく つくれなかったよ";
       this.captureGenerationMessageEl.textContent = "もういちど ためすか、スキップしてね";

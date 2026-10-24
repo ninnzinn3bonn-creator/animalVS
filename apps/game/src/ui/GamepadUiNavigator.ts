@@ -112,6 +112,12 @@ export class GamepadUiNavigator {
       if (!inputs.has(blocked)) this.blockedInputs.delete(blocked);
     }
     const newlyPressed = [...inputs].filter((key) => !this.previousInputs.has(key) && !this.blockedInputs.has(key));
+    if (newlyPressed.length > 0 && this.root.classList.contains("title-view")) {
+      this.confirm();
+      this.blockCurrentInputs(inputs);
+      this.previousInputs = inputs;
+      return;
+    }
     if (newlyPressed.length > 0 && this.dismissOverlay()) {
       this.blockCurrentInputs(inputs);
       this.previousInputs = inputs;

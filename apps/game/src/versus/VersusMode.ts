@@ -35,6 +35,7 @@ import {
 } from "./VersusConfig";
 
 export class VersusMode implements VersusCoordinatorEvents {
+  private static readonly assignmentStorageKey = "tomodachi-tower-versus-inputs-v1";
   private root!: HTMLElement;
   private setupEl!: HTMLElement;
   private arenaEl!: HTMLElement;
@@ -55,6 +56,7 @@ export class VersusMode implements VersusCoordinatorEvents {
   private livesEls!: Record<PlayerId, HTMLElement>;
   private startCountdownEls!: Record<PlayerId, HTMLElement>;
   private resultCards!: Record<PlayerId, HTMLElement>;
+  private boardResults!: Record<PlayerId, HTMLElement>;
   private readonly attackNoticeTimers: Partial<Record<PlayerId, number>> = {};
   private coordinator!: VersusCoordinator;
   private gamepads: ConnectedGamepad[] = [];
@@ -74,15 +76,18 @@ export class VersusMode implements VersusCoordinatorEvents {
       <section class="versus-setup" data-versus-setup>
         <div class="versus-setup-heading">
           <i data-lucide="swords"></i>
-          <div><h2>ローカル2人対戦</h2><p>左右の操作方法を選んで対戦を開始</p></div>
+          <div><h2>たいせんの じゅんびOK！</h2><p>ふたりの キャラクターを たかく つもう</p></div>
         </div>
-        <div class="versus-player-settings">
-          ${this.setupPlayerMarkup(1, "keyboard:wasd")}
-          ${this.setupPlayerMarkup(2, "keyboard:arrows")}
-        </div>
+        <details class="versus-input-settings">
+          <summary>スタッフよう そうさせってい</summary>
+          <div class="versus-player-settings">
+            ${this.setupPlayerMarkup(1, "keyboard:wasd")}
+            ${this.setupPlayerMarkup(2, "keyboard:arrows")}
+          </div>
+        </details>
         <p class="versus-setup-status" data-versus-setup-status role="status"></p>
         <button class="versus-start" type="button" data-versus-command="start" data-gamepad-default>
-          <i data-lucide="play"></i><span>対戦開始</span>
+          <i data-lucide="play"></i><span>ゲーム スタート！</span>
         </button>
       </section>
 
@@ -116,9 +121,9 @@ export class VersusMode implements VersusCoordinatorEvents {
               ${this.resultCardMarkup(2)}
             </div>
             <div class="versus-modal-actions">
-              <button type="button" data-versus-command="title"><i data-lucide="chevron-left"></i><span>タイトルへもどる</span></button>
+              <button type="button" data-versus-command="title"><i data-lucide="chevron-left"></i><span>つぎの ふたりへ</span></button>
               <button class="primary" type="button" data-versus-command="rematch" data-gamepad-default><i data-lucide="play"></i><span>もういちど</span></button>
-              <button type="button" data-versus-command="setup"><i data-lucide="settings-2"></i><span>そうさせってい</span></button>
+              <button type="button" data-versus-command="setup"><i data-lucide="settings-2"></i><span>スタッフせってい</span></button>
             </div>
           </div>
         </div>
@@ -164,6 +169,10 @@ export class VersusMode implements VersusCoordinatorEvents {
       1: root.querySelector("[data-versus-result-player='1']")!,
       2: root.querySelector("[data-versus-result-player='2']")!
     };
+    this.boardResults = {
+      1: root.querySelector("[data-board-result='1']")!,
+      2: root.querySelector("[data-board-result='2']")!
+    };
 
     const canvases: Record<PlayerId, HTMLCanvasElement> = {
       1: this.createCanvas(),
@@ -178,6 +187,7 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.coordinator = new VersusCoordinator(canvases, this.repository, huds, this);
     this.bindEvents();
     this.renderIcons();
+    this.restoreAssignments();
     this.syncAssignments();
   }
 
@@ -206,11 +216,12 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.music.setActive("versus", phase === "playing" || phase === "overtime");
     const setup = phase === "setup";
     this.setupEl.hidden = !setup;
-    this.arenaEl.hidden = setup;
+    this.arenaEl.hidden = false;
     this.arenaEl.dataset.phase = phase;
     if (phase === "countdown" || phase === "playing" || phase === "overtime") {
       this.pauseOverlayEl.hidden = true;
       this.resultOverlayEl.hidden = true;
+      this.hideBoardResults();
     }
     if (phase === "setup") {
       this.hideAttackNotices();
@@ -297,6 +308,11 @@ export class VersusMode implements VersusCoordinatorEvents {
       card.querySelector("[data-result-outcome]")!.textContent = player === result.winner ? "勝者" : "敗者";
       card.querySelector("[data-result-height]")!.textContent = `${measurement.height}px`;
       card.querySelector("[data-result-characters]")!.textContent = `${measurement.boardCharacters}体`;
+      const boardResult = this.boardResults[player];
+      boardResult.dataset.outcome = player === result.winner ? "winner" : "loser";
+      boardResult.querySelector("strong")!.textContent = player === result.winner ? "かち！" : "まけ";
+      boardResult.querySelector("span")!.textContent = `${measurement.height}px・${measurement.boardCharacters}たい`;
+      boardResult.hidden = false;
     }
   }
 
@@ -322,6 +338,7 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.root.addEventListener("change", (event) => {
       if ((event.target as HTMLElement).matches("[data-versus-input]")) {
         this.assignmentsTouched = true;
+        this.saveAssignments();
         this.syncAssignments();
       }
     });
@@ -338,6 +355,7 @@ export class VersusMode implements VersusCoordinatorEvents {
   }
 
   private beginMatch(assignments: Record<PlayerId, InputAssignment>): void {
+    this.saveAssignments(assignments);
     const error = this.coordinator.startMatch(assignments);
     if (error) {
       this.setupStatusEl.textContent = error;
@@ -367,6 +385,34 @@ export class VersusMode implements VersusCoordinatorEvents {
     this.startButtonEl.disabled = Boolean(error);
     this.setupStatusEl.textContent = error ?? "";
     this.applyControlVisibility();
+  }
+
+  private restoreAssignments(): void {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(VersusMode.assignmentStorageKey) ?? "null") as Partial<Record<PlayerId, InputAssignment>> | null;
+      if (!parsed) return;
+      for (const player of [1, 2] as const) {
+        if (parsed[player] && Array.from(this.selects[player].options).some((option) => option.value === parsed[player])) {
+          this.selects[player].value = parsed[player]!;
+        }
+      }
+      this.assignmentsTouched = true;
+    } catch {
+      // Keep the safe keyboard defaults when saved settings cannot be read.
+    }
+  }
+
+  private saveAssignments(assignments = this.readAssignments()): void {
+    try {
+      localStorage.setItem(VersusMode.assignmentStorageKey, JSON.stringify(assignments));
+    } catch {
+      // The current match can continue when storage is unavailable.
+    }
+  }
+
+  private hideBoardResults(): void {
+    if (!this.boardResults) return;
+    for (const player of [1, 2] as const) this.boardResults[player].hidden = true;
   }
 
   private renderInputOptions(): void {
@@ -429,6 +475,7 @@ export class VersusMode implements VersusCoordinatorEvents {
         <dl><div><dt>次</dt><dd data-player-next>-</dd></div><div><dt>落下数</dt><dd data-player-drops>0</dd></div></dl>
       </header>
       <div class="versus-stage">
+        <div class="versus-board-result" data-board-result="${player}" hidden><strong></strong><span></span></div>
         <div class="versus-attack-notice" data-versus-attack="${player}" hidden></div>
         <div class="versus-start-countdown" data-versus-start-countdown="${player}" hidden></div>
         <div class="versus-turn-countdown" data-player-countdown hidden></div>

@@ -168,6 +168,28 @@ describe("generic gamepad confirmation", () => {
     expect(control.click).not.toHaveBeenCalled();
   });
 
+  it("advances the title with a Buffalo direction input", () => {
+    let hat = 3.285714;
+    const pad = {
+      get axes() { return [-1, hat]; },
+      buttons: Array.from({ length: 16 }, () => ({ pressed: false, touched: false, value: 0 })),
+      index: 0,
+      mapping: ""
+    } as unknown as Gamepad;
+    const control = fakeControl();
+    vi.stubGlobal("navigator", { getGamepads: () => [pad] });
+    vi.stubGlobal("document", { activeElement: null });
+    vi.stubGlobal("HTMLSelectElement", class {});
+    const navigator = new GamepadUiNavigator(fakeRoot(() => [control], true) as unknown as HTMLElement, () => false, vi.fn());
+    const poll = () => (navigator as unknown as { poll: () => void }).poll();
+
+    poll();
+    poll();
+    hat = -0.428571;
+    poll();
+    expect(control.click).toHaveBeenCalledTimes(1);
+  });
+
   it("does not lock the UI when a cheap controller reports an unrelated button as always active", () => {
     const confirm = { value: false };
     const pad = {
@@ -211,9 +233,9 @@ function fakeControl() {
   };
 }
 
-function fakeRoot(controls: () => ReturnType<typeof fakeControl>[]) {
+function fakeRoot(controls: () => ReturnType<typeof fakeControl>[], titleView = false) {
   return {
-    classList: { contains: () => false },
+    classList: { contains: (name: string) => name === "title-view" && titleView },
     querySelector: () => null,
     querySelectorAll: (selector: string) => selector === ".gamepad-selected" ? controls() : controls()
   };

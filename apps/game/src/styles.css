@@ -1849,6 +1849,286 @@ canvas {
   }
 }
 
+/* Event flow: one clear two-player path, while keeping the existing game worlds intact. */
+.event-title-message {
+  position: absolute;
+  right: 8%;
+  bottom: 15%;
+  left: 8%;
+  z-index: 3;
+  display: grid;
+  gap: 6px;
+  padding: 12px 18px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #1d1d1f;
+  font-size: clamp(22px, 3.4vw, 42px);
+  font-weight: 850;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.event-title-message small {
+  font-size: clamp(13px, 1.7vw, 22px);
+  font-weight: 750;
+}
+
+.event-howto {
+  z-index: 1;
+  display: grid;
+  width: min(900px, calc(100vw - 40px));
+  justify-self: center;
+  gap: 8px;
+  padding: 16px 24px;
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  font-size: clamp(20px, 2.5vw, 34px);
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.event-howto span {
+  font-size: 0.78em;
+}
+
+#versus-root {
+  position: relative;
+}
+
+.versus-input-settings {
+  width: min(760px, 100%);
+  padding: 8px 12px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.versus-input-settings summary {
+  min-height: 34px;
+  padding: 7px;
+  color: var(--secondary-label);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.versus-board-result {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 13;
+  display: grid;
+  min-width: 48%;
+  justify-items: center;
+  gap: 4px;
+  padding: 18px 22px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 16px 42px rgba(20, 30, 40, 0.2);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.versus-board-result[hidden] {
+  display: none;
+}
+
+.versus-board-result strong {
+  font-size: clamp(44px, 6vw, 88px);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.player-1 .versus-board-result strong {
+  color: #d70015;
+}
+
+.player-2 .versus-board-result strong {
+  color: #0066d6;
+}
+
+.versus-board-result span {
+  font-size: clamp(14px, 1.7vw, 22px);
+  font-weight: 800;
+}
+
+@media (min-width: 681px) {
+  .start-choice-screen {
+    grid-template-rows: minmax(130px, 28dvh) auto 1fr;
+  }
+
+  .start-choice-actions {
+    grid-template-columns: minmax(420px, 760px);
+    justify-content: center;
+  }
+
+  .start-choice-actions button {
+    min-height: 118px;
+    font-size: 22px;
+  }
+
+  #view-capture.active {
+    display: block;
+    overflow: hidden;
+  }
+
+  .capture-grid {
+    position: relative;
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #101216;
+  }
+
+  .capture-heading {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    left: 50%;
+    z-index: 7;
+    padding: 10px 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    font-size: clamp(24px, 3vw, 42px);
+    transform: translateX(-50%);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+
+  .camera-box {
+    width: 100vw;
+    height: 100dvh;
+    aspect-ratio: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #101216;
+    box-shadow: none;
+  }
+
+  .camera-box video,
+  .capture-review {
+    border-radius: 0;
+  }
+
+  .body-guide {
+    inset: 9% 31% 17%;
+  }
+
+  .capture-form {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    z-index: 7;
+    width: min(330px, 31vw);
+    gap: 9px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: 16px;
+    background: rgba(248, 250, 252, 0.74);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+  }
+
+  .capture-status {
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+
+  .capture-steps {
+    display: none;
+  }
+
+  .capture-skip {
+    min-height: 44px;
+  }
+
+  .camera-actions {
+    right: 50%;
+    bottom: 20px;
+    left: auto;
+    width: min(520px, 46vw);
+    transform: translateX(50%);
+  }
+
+  .camera-actions .capture-shot-button {
+    min-height: 72px;
+    font-size: 21px;
+  }
+
+  .capture-review {
+    inset: 0;
+  }
+
+  .capture-review-actions {
+    right: 50%;
+    bottom: 20px;
+    left: auto;
+    width: min(560px, 48vw);
+    transform: translateX(50%);
+  }
+
+  .capture-review-actions button {
+    min-height: 66px;
+    font-size: 18px;
+  }
+
+  .versus-setup {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    width: 100%;
+    min-height: 100dvh;
+    gap: 14px;
+    padding: 64px 24px 30px;
+    background: rgba(255, 255, 255, 0.58);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+  }
+
+  .versus-setup-heading h2 {
+    font-size: clamp(30px, 4vw, 54px);
+  }
+
+  .versus-setup-heading p {
+    font-size: clamp(16px, 2vw, 24px);
+  }
+
+  .versus-start {
+    min-width: 330px;
+    min-height: 76px;
+    font-size: 24px;
+  }
+
+  .versus-result {
+    align-items: end;
+    padding: 10px 20px;
+  }
+
+  .versus-result .versus-modal-panel {
+    width: min(760px, 94vw);
+    gap: 6px;
+    padding: 12px 18px;
+  }
+
+  .versus-result .versus-result-grid {
+    display: none;
+  }
+}
+
 .camera-box {
   position: relative;
   overflow: hidden;
@@ -2582,5 +2862,72 @@ input::placeholder {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Keep full-screen capture rules last so the legacy responsive camera does not override them. */
+@media (min-width: 681px) {
+  #view-capture.active {
+    display: block;
+    overflow: hidden;
+  }
+
+  .capture-grid {
+    position: relative;
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #101216;
+  }
+
+  .camera-box {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    aspect-ratio: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .camera-box video,
+  .capture-review {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+
+  .capture-form {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    z-index: 7;
+    width: min(330px, 31vw);
+    padding: 12px;
+  }
+
+  .capture-steps {
+    display: none;
+  }
+
+  .camera-actions {
+    right: auto;
+    bottom: 20px;
+    left: 18px;
+    width: min(620px, calc(100vw - 390px));
+    transform: none;
+  }
+
+  .capture-review-actions {
+    right: auto;
+    bottom: 20px;
+    left: 18px;
+    width: min(620px, calc(100vw - 390px));
+    transform: none;
   }
 }

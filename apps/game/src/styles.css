@@ -416,39 +416,35 @@ h1 {
   transform: none;
 }
 
-.title-logo-backdrop {
+.title-logo-group {
   position: absolute;
   top: 32%;
   left: 50%;
-  width: 99%;
-  height: 11%;
+  width: 94%;
+  aspect-ratio: 6.2 / 1;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.80);
   box-shadow: 0 2px 10px rgba(255, 255, 255, 0.26);
   transform: translate(-50%, -50%);
 }
 
 .title-logo {
-  position: absolute;
-  top: 32%;
-  left: 50%;
-  width: 96%;
-  height: 10%;
+  position: relative;
+  width: 94%;
+  height: auto;
   object-fit: contain;
-  transform: translate(-50%, -50%);
 }
 
-.title-tap-backdrop,
-.title-tap-prompt {
+.title-tap-group {
   position: absolute;
-  top: 58%;
+  top: 60%;
   left: 50%;
   transform: translate(-50%, -50%);
-}
-
-.title-tap-backdrop {
   width: 72%;
-  height: 10%;
+  aspect-ratio: 3.8 / 1;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.62);
@@ -456,10 +452,13 @@ h1 {
 }
 
 .title-tap-prompt {
-  width: 58%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 106%;
   height: auto;
   object-fit: contain;
-  animation: title-tap-pulse 1.8s ease-in-out infinite;
+  transform: translate(-50%, -50%);
 }
 
 .title-menu-callout {
@@ -2862,6 +2861,40 @@ input::placeholder {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (min-width: 681px) {
+  .title-screen {
+    background-position: center bottom;
+  }
+
+  .title-logo-group {
+    top: 32%;
+    width: min(94%, 170dvh);
+  }
+
+  .title-tap-group {
+    top: 61%;
+    width: min(38%, 65dvh);
+  }
+
+  .title-view .menu-wrap {
+    right: max(20px, env(safe-area-inset-right));
+  }
+
+  .event-title-message {
+    right: auto;
+    bottom: 5%;
+    left: 50%;
+    width: max-content;
+    max-width: 90%;
+    transform: translateX(-50%);
+    font-size: 28px;
+  }
+
+  .event-title-message small {
+    font-size: 18px;
   }
 }
 

@@ -142,13 +142,14 @@ export class AppUi implements GameHud {
         <section class="view active" id="view-title">
           <div class="title-screen">
             <button class="title-enter" type="button" data-action="title-enter" data-gamepad-default aria-label="遊び方を選ぶ画面へ進む">
-              <span class="title-logo-backdrop" aria-hidden="true"></span>
-              <img class="title-logo" src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
-              <span class="title-tap-backdrop" aria-hidden="true"></span>
-              <img class="title-tap-prompt" src="/assets/backgrounds/tap-prompt-v1.png" alt="タップしてね" />
+              <span class="title-logo-group">
+                <img class="title-logo" src="/assets/backgrounds/tomodachi-title-v1.png" alt="ともだちたわーばとる" />
+              </span>
+              <span class="title-tap-group">
+                <img class="title-tap-prompt" src="/assets/backgrounds/tap-prompt-v1.png" alt="タップしてね" />
+              </span>
               <span class="event-title-message">ふたりで あそぼう！<small>ひとりできたら おともだちや スタッフを よんでね</small></span>
             </button>
-            <img class="title-menu-callout" src="/assets/backgrounds/menu-callout-v1.png" alt="メニュー" />
           </div>
         </section>
 

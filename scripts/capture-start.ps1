@@ -55,6 +55,12 @@ if (-not $workerPid) {
   $workerPid = $worker.Id
 }
 
+$publicEnv = Join-Path $root ".env.public"
+$fastWorkerEnabled = (Test-Path $publicEnv) -and (Select-String -LiteralPath $publicEnv -Pattern '^PYTHON_WORKER_URL=http://127\.0\.0\.1:8789/?$' -Quiet)
+if ($fastWorkerEnabled) {
+  & (Join-Path $PSScriptRoot "worker-fast-start.ps1")
+}
+
 $serverPid = Get-ListenerPid 5180 @("node") "(?i)apps[\\/]server[\\/]dist[\\/]index\.js"
 if (-not $serverPid) {
   if (-not (Test-Path (Join-Path $root "apps\server\dist\index.js"))) {

@@ -30,6 +30,7 @@ $state = Get-Content -Raw $processFile | ConvertFrom-Json
 Stop-KnownProcess ([int]$state.tunnelPid) @("cloudflared") "(?i)\btunnel\b.*\brun\b.*--token-file"
 Stop-KnownProcess ([int]$state.serverPid) @("node") "(?i)apps[\\/]server[\\/]dist[\\/]index\.js"
 Stop-KnownProcess ([int]$state.workerPid) @("python", "python3") "(?i)uvicorn.*--app-dir\s+services[\\/]image-worker"
+& (Join-Path $PSScriptRoot "worker-fast-stop.ps1")
 
 Remove-Item -LiteralPath $processFile -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $runtime "capture-tunnel-token.tmp") -Force -ErrorAction SilentlyContinue

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 import uuid
+from collections.abc import Callable
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,6 +24,9 @@ def process_photo(
     source_hash: str,
     characters_dir: str,
     save_original: bool = True,
+    *,
+    background_remover: Callable[[Image.Image], Image.Image] = remove_background,
+    timings: dict[str, float] | None = None,
 ) -> dict:
     source = Path(source_path)
     if not source.exists():
@@ -30,26 +36,34 @@ def process_photo(
     output_dir = Path(characters_dir) / character_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    image = Image.open(source)
-    image = ImageOps.exif_transpose(image).convert("RGBA")
-    image = resize_long_edge(image, MAX_LONG_EDGE)
+    with measure(timings, "decode"):
+        image = Image.open(source)
+        image = ImageOps.exif_transpose(image).convert("RGBA")
+    with measure(timings, "resizeInput"):
+        image = resize_long_edge(image, MAX_LONG_EDGE)
 
-    cutout = remove_background(image)
-    cutout = trim_transparent(cutout)
-    cutout = resize_long_edge(cutout, OUTPUT_LONG_EDGE)
-    sticker = add_sticker_style(cutout)
+    with measure(timings, "removeBackground"):
+        cutout = background_remover(image)
+    with measure(timings, "trim"):
+        cutout = trim_transparent(cutout)
+    with measure(timings, "resizeOutput"):
+        cutout = resize_long_edge(cutout, OUTPUT_LONG_EDGE)
+    with measure(timings, "sticker"):
+        sticker = add_sticker_style(cutout)
 
     sprite_path = output_dir / "sprite.png"
     mask_path = output_dir / "mask.png"
     character_path = output_dir / "character.json"
 
-    sticker.save(sprite_path)
-    sticker.getchannel("A").save(mask_path)
-    if save_original:
-        original_suffix = source.suffix.lower() or ".jpg"
-        shutil.copy2(source, output_dir / f"original{original_suffix}")
+    with measure(timings, "saveAssets"):
+        sticker.save(sprite_path)
+        sticker.getchannel("A").save(mask_path)
+        if save_original:
+            original_suffix = source.suffix.lower() or ".jpg"
+            shutil.copy2(source, output_dir / f"original{original_suffix}")
 
-    hull = extract_hull(sticker.getchannel("A"))
+    with measure(timings, "contour"):
+        hull = extract_hull(sticker.getchannel("A"))
     character = {
         "id": character_id,
         "name": sanitize_name(name),
@@ -62,8 +76,21 @@ def process_photo(
         "sourceHash": source_hash,
         "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
-    character_path.write_text(json.dumps(character, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    with measure(timings, "metadata"):
+        character_path.write_text(json.dumps(character, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return character
+
+
+@contextmanager
+def measure(timings: dict[str, float] | None, stage: str):
+    if timings is None:
+        yield
+        return
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        timings[stage] = round((time.perf_counter() - started) * 1000, 2)
 
 
 def resize_long_edge(image: Image.Image, max_edge: int) -> Image.Image:

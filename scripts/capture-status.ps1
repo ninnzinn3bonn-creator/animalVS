@@ -40,6 +40,7 @@ if (Test-Path $tunnelFile) {
 }
 
 Write-Output "Image worker 8788: $(Get-PortState 8788 @("python", "python3") "(?i)uvicorn.*--app-dir\s+services[\\/]image-worker")"
+& (Join-Path $PSScriptRoot "worker-fast-status.ps1")
 Write-Output "Capture API 5180:  $(Get-PortState 5180 @("node") "(?i)apps[\\/]server[\\/]dist[\\/]index\.js")"
 Write-Output "Named Tunnel:      $tunnelState"
 Write-Output "Tunnel identity:   $tunnelName"
